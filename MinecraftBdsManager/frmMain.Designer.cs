@@ -37,20 +37,27 @@
             this.toolBtnOpenSavesFolder = new System.Windows.Forms.ToolStripButton();
             this.toolBtnShowMap = new System.Windows.Forms.ToolStripButton();
             this.toolBtnBackupNow = new System.Windows.Forms.ToolStripButton();
-            this.txtStatus = new System.Windows.Forms.TextBox();
             this.txtCustomCommand = new System.Windows.Forms.TextBox();
             this.btnIssueCommand = new System.Windows.Forms.Button();
             this.lblStatusBox = new System.Windows.Forms.Label();
             this.lblCustomCommand = new System.Windows.Forms.Label();
             this.toolBtnSettings = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
+            this.rtbStatus = new System.Windows.Forms.RichTextBox();
             this.toolStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // toolStrip1
             // 
             this.toolStrip1.ImageScalingSize = new System.Drawing.Size(24, 24);
-            this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {this.toolBtnStart, this.toolBtnStop, this.toolBtnViewLog, this.toolBtnOpenLogsFolder, this.toolBtnOpenSavesFolder, this.toolBtnShowMap, this.toolBtnBackupNow});
+            this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolBtnStart,
+            this.toolBtnStop,
+            this.toolBtnViewLog,
+            this.toolBtnOpenLogsFolder,
+            this.toolBtnOpenSavesFolder,
+            this.toolBtnShowMap,
+            this.toolBtnBackupNow});
             this.toolStrip1.Location = new System.Drawing.Point(0, 0);
             this.toolStrip1.Name = "toolStrip1";
             this.toolStrip1.Size = new System.Drawing.Size(1373, 33);
@@ -134,19 +141,6 @@
             this.toolBtnBackupNow.ToolTipText = "Create a backup now";
             this.toolBtnBackupNow.Click += new System.EventHandler(this.toolBtnBackupNow_Click);
             // 
-            // txtStatus
-            // 
-            this.txtStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtStatus.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.txtStatus.Location = new System.Drawing.Point(12, 71);
-            this.txtStatus.Multiline = true;
-            this.txtStatus.Name = "txtStatus";
-            this.txtStatus.ReadOnly = true;
-            this.txtStatus.Size = new System.Drawing.Size(1349, 577);
-            this.txtStatus.TabIndex = 1;
-            // 
             // txtCustomCommand
             // 
             this.txtCustomCommand.Location = new System.Drawing.Point(12, 690);
@@ -201,21 +195,37 @@
             this.toolStripButton1.Size = new System.Drawing.Size(34, 28);
             this.toolStripButton1.Text = "toolStripButton1";
             // 
+            // rtbStatus
+            // 
+            this.rtbStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.rtbStatus.BackColor = System.Drawing.SystemColors.ControlLight;
+            this.rtbStatus.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.rtbStatus.Location = new System.Drawing.Point(12, 71);
+            this.rtbStatus.Name = "rtbStatus";
+            this.rtbStatus.ReadOnly = true;
+            this.rtbStatus.Size = new System.Drawing.Size(1331, 569);
+            this.rtbStatus.TabIndex = 7;
+            this.rtbStatus.Text = "";
+            this.rtbStatus.TextChanged += new System.EventHandler(this.rtbStatus_TextChanged);
+            // 
             // frmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1373, 753);
+            this.Controls.Add(this.rtbStatus);
             this.Controls.Add(this.lblCustomCommand);
             this.Controls.Add(this.lblStatusBox);
             this.Controls.Add(this.btnIssueCommand);
             this.Controls.Add(this.txtCustomCommand);
-            this.Controls.Add(this.txtStatus);
             this.Controls.Add(this.toolStrip1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "frmMain";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Minecraft BDS Manager";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmMain_FormClosing);
             this.Load += new System.EventHandler(this.frmMain_Load);
             this.toolStrip1.ResumeLayout(false);
             this.toolStrip1.PerformLayout();
@@ -234,12 +244,12 @@
         private ToolStripButton toolBtnOpenSavesFolder;
         private ToolStripButton toolBtnShowMap;
         private ToolStripButton toolBtnBackupNow;
-        private TextBox txtStatus;
         private TextBox txtCustomCommand;
         private Button btnIssueCommand;
         private Label lblStatusBox;
         private Label lblCustomCommand;
         private ToolStripButton toolBtnSettings;
         private ToolStripButton toolStripButton1;
+        private RichTextBox rtbStatus;
     }
 }
