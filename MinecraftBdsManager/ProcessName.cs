@@ -5,6 +5,7 @@ namespace MinecraftBdsManager
     {
         Unknown = 0,
         BedrockDedicatedServer,
-        Papyrus
+        Papyrus,
+        FireAndForget
     }
 }

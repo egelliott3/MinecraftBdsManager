@@ -1,4 +1,5 @@
-﻿using MinecraftBdsManager.Logging;
+﻿using MinecraftBdsManager.Configuration;
+using MinecraftBdsManager.Logging;
 using System.Diagnostics;
 
 namespace MinecraftBdsManager
@@ -11,7 +12,7 @@ namespace MinecraftBdsManager
         internal async static Task SendCommandAsync(string command, bool userSentCommand = false)
         {
             // If a null or blank command was sent then simply return as there is nothing to send
-            if (string.IsNullOrEmpty(command))
+            if (string.IsNullOrWhiteSpace(command))
             {
                 return;
             }
@@ -29,14 +30,25 @@ namespace MinecraftBdsManager
             await bdsProcess.StandardInput.WriteAsync($"{command}\n");
         }
 
-        internal static async Task StartAsync()
+        internal static async Task<bool> StartAsync()
         {
+            if (string.IsNullOrWhiteSpace(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath))
+            {
+                // TODO : Consider loading the Settings form if this value is not present.
+
+                LogManager.LogError("Unable to auto start Bedrock Dedicated Server as the path to bedrock_server.exe has not yet been specified.  Please check and update your BDS Manager settings.");
+                return false;
+            }
+
+
             bool newProcessStarted = ProcessManager.StartProcess(ProcessName.BedrockDedicatedServer, _hardcodedBdsExePath, string.Empty);
 
             if (!newProcessStarted)
             {
                 await SendCommandAsync("start");
             }
+
+            return true;
         }
 
         internal static async Task StopAsync()

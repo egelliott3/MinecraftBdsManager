@@ -22,7 +22,7 @@ namespace MinecraftBdsManager
             {
                 if (disposing)
                 {
-                    foreach(var processEntry in TrackedProcesses)
+                    foreach (var processEntry in TrackedProcesses)
                     {
                         var process = processEntry.Value;
 
@@ -48,15 +48,20 @@ namespace MinecraftBdsManager
                 throw new ArgumentNullException(nameof(processName));
             }
 
-            if (string.IsNullOrEmpty(executablePath))
+            if (string.IsNullOrWhiteSpace(executablePath))
             {
                 throw new ArgumentNullException(nameof(executablePath));
+            }
+
+            if (processName == ProcessName.FireAndForget)
+            {
+                return StartFireAndForgetProcess(executablePath, arguments);
             }
 
             Trace.TraceInformation($"Starting process {processName}.");
 
             // Check to see if we are already tracking this process...
-            if (TrackedProcesses.ContainsKey(processName))
+            if (TrackedProcesses.ContainsKey(processName) && processName != ProcessName.FireAndForget)
             {
                 var process = TrackedProcesses[processName];
 
@@ -104,6 +109,25 @@ namespace MinecraftBdsManager
 
             newProcess.BeginOutputReadLine();
             newProcess.BeginErrorReadLine();
+
+            return true;
+        }
+
+        private static bool StartFireAndForgetProcess(string executablePath, string arguments)
+        {
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = executablePath,
+                Arguments = arguments,
+                WorkingDirectory = Path.GetDirectoryName(executablePath),
+            };
+
+            var newProcess = new Process
+            {
+                StartInfo = processStartInfo
+            };
+
+            newProcess.Start();
 
             return true;
         }

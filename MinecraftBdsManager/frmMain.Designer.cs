@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmMain));
-            this.toolStrip1 = new System.Windows.Forms.ToolStrip();
+            this.toolBarMain = new System.Windows.Forms.ToolStrip();
             this.toolBtnStart = new System.Windows.Forms.ToolStripButton();
             this.toolBtnStop = new System.Windows.Forms.ToolStripButton();
             this.toolBtnViewLog = new System.Windows.Forms.ToolStripButton();
@@ -44,13 +44,14 @@
             this.toolBtnSettings = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
             this.rtbStatus = new System.Windows.Forms.RichTextBox();
-            this.toolStrip1.SuspendLayout();
+            this.toolBarMain.SuspendLayout();
             this.SuspendLayout();
             // 
-            // toolStrip1
+            // toolBarMain
             // 
-            this.toolStrip1.ImageScalingSize = new System.Drawing.Size(24, 24);
-            this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolBarMain.ImageScalingSize = new System.Drawing.Size(24, 24);
+            this.toolBarMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+                this.toolBtnSettings,
             this.toolBtnStart,
             this.toolBtnStop,
             this.toolBtnViewLog,
@@ -58,10 +59,11 @@
             this.toolBtnOpenSavesFolder,
             this.toolBtnShowMap,
             this.toolBtnBackupNow});
-            this.toolStrip1.Location = new System.Drawing.Point(0, 0);
-            this.toolStrip1.Name = "toolStrip1";
-            this.toolStrip1.Size = new System.Drawing.Size(1373, 33);
-            this.toolStrip1.TabIndex = 6;
+            this.toolBarMain.Location = new System.Drawing.Point(0, 0);
+            this.toolBarMain.Name = "toolBarMain";
+            this.toolBarMain.Padding = new System.Windows.Forms.Padding(0, 7, 3, 0);
+            this.toolBarMain.Size = new System.Drawing.Size(1373, 40);
+            this.toolBarMain.TabIndex = 6;
             // 
             // toolBtnStart
             // 
@@ -197,8 +199,8 @@
             // 
             // rtbStatus
             // 
-            this.rtbStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.rtbStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.rtbStatus.BackColor = System.Drawing.SystemColors.ControlLight;
             this.rtbStatus.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
@@ -220,15 +222,15 @@
             this.Controls.Add(this.lblStatusBox);
             this.Controls.Add(this.btnIssueCommand);
             this.Controls.Add(this.txtCustomCommand);
-            this.Controls.Add(this.toolStrip1);
+            this.Controls.Add(this.toolBarMain);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "frmMain";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Minecraft BDS Manager";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmMain_FormClosing);
             this.Load += new System.EventHandler(this.frmMain_Load);
-            this.toolStrip1.ResumeLayout(false);
-            this.toolStrip1.PerformLayout();
+            this.toolBarMain.ResumeLayout(false);
+            this.toolBarMain.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -236,7 +238,7 @@
 
         #endregion
 
-        private ToolStrip toolStrip1;
+        private ToolStrip toolBarMain;
         private ToolStripButton toolBtnStart;
         private ToolStripButton toolBtnStop;
         private ToolStripButton toolBtnViewLog;

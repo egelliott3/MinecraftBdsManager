@@ -25,23 +25,26 @@ namespace MinecraftBdsManager.Logging
 
         private void FormatMessage(string message)
         {
+            // For each of the formatting options available...
             foreach (var formatting in _messageFormatting)
             {
+                // ... see if any match and apply the formatting if they do
                 if (message.StartsWith(formatting.TextToMatch))
                 {
                     _listenerTarget.SelectionStart = _listenerTarget.TextLength;
                     _listenerTarget.SelectionLength = 0;
                     _listenerTarget.SelectionColor = formatting.Color;
                     _listenerTarget.SelectionFont = new Font(_listenerTarget.Font, formatting.FontStyle);
-                }
 
-                break;
+                    // Formatting has been applied so quit out
+                    break;
+                }
             }
         }
 
         public override void Write(string? message)
         {
-            if (string.IsNullOrEmpty(message))
+            if (string.IsNullOrWhiteSpace(message))
             {
                 return;
             }
@@ -51,7 +54,7 @@ namespace MinecraftBdsManager.Logging
 
         public override void WriteLine(string? message)
         {
-            if (string.IsNullOrEmpty(message))
+            if (string.IsNullOrWhiteSpace(message))
             {
                 return;
             }

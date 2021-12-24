@@ -1,19 +1,12 @@
-﻿using MinecraftBdsManager.Logging;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+﻿using MinecraftBdsManager.Configuration;
+using MinecraftBdsManager.Logging;
 
 namespace MinecraftBdsManager
 {
     public partial class frmMain : Form
     {
+        private bool _clearStatusBoxOnStart = false;
+
         public frmMain()
         {
             InitializeComponent();
@@ -21,7 +14,7 @@ namespace MinecraftBdsManager
 
         private async void btnIssueCommand_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(btnIssueCommand.Text))
+            if (string.IsNullOrWhiteSpace(btnIssueCommand.Text))
             {
                 return;
             }
@@ -36,11 +29,26 @@ namespace MinecraftBdsManager
 
         private void frmMain_Load(object sender, EventArgs e)
         {
-            // TODO : Setup trace listener(s)
-            //  Need one for the status textbox
+            // Get those settings so we know how to handle things
+            _ = Settings.LoadSettings();
+
+            // Setup trace listener(s)
+
+            //  Need one for the status textbox, which will always be present
             LogManager.RegisterUILogger(rtbStatus);
-            //  Need another one for log files
-            //  Any more needed?
+
+            //  Need another one for log files, if opted in with valid path
+            if (Settings.CurrentSettings.LoggingSettings.EnableLoggingToFile)
+            {
+                LogManager.RegisterFileLogger(Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath);
+            }
+
+            // If autostart is enabled then start the server
+            if (Settings.CurrentSettings.AutoStartBedrockDedicatedServer)
+            {
+                LogManager.LogInformation("Auto starting Bedrock Dedicated Server.");
+                toolBtnStart_Click(sender, e);
+            }
         }
 
         private void rtbStatus_TextChanged(object sender, EventArgs e)
@@ -56,7 +64,7 @@ namespace MinecraftBdsManager
 
         private void toolBtnOpenLogsFolder_Click(object sender, EventArgs e)
         {
-
+            ProcessManager.StartProcess(ProcessName.FireAndForget, "explorer.exe", Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath);
         }
 
         private void toolBtnOpenSavesFolder_Click(object sender, EventArgs e)
@@ -73,10 +81,15 @@ namespace MinecraftBdsManager
         {
             toolBtnStart.Enabled = false;
 
-            rtbStatus.Clear();
-            await BdsManager.StartAsync();
+            if (_clearStatusBoxOnStart)
+            {
+                rtbStatus.Clear();
+            }
+            var success = await BdsManager.StartAsync();
 
-            toolBtnStop.Enabled = true;
+            toolBtnStop.Enabled = success;
+            toolBtnStart.Enabled = !success;
+            _clearStatusBoxOnStart = true;
         }
 
         private async void toolBtnStop_Click(object sender, EventArgs e)
@@ -90,7 +103,7 @@ namespace MinecraftBdsManager
 
         private void toolBtnViewLog_Click(object sender, EventArgs e)
         {
-
+            ProcessManager.StartProcess(ProcessName.FireAndForget, "explorer.exe", LogManager.CurrentLogFilePath);
         }
 
     }
