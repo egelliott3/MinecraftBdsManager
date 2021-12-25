@@ -5,6 +5,61 @@ namespace MinecraftBdsManager.Managers
 {
     internal class BackupManager
     {
+        private static System.Timers.Timer _backupTimer = new() { Enabled = false };
+
+        private async static void BackupTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            LogManager.LogInformation("Automatic backup is starting.");
+
+            // Check settings to see if the user wanted to do a backup only if players had been online
+            if (Settings.CurrentSettings.BackupSettings.OnlyBackupIfUsersWereOnline)
+            {
+                // Get when a user most recently logged off
+                var latestUserDisconnectionTime = BdsManager.UserLastLoggedOffAt;
+                var latestUserConnectedTime = BdsManager.UserLastLoggedOnAt;
+
+                // User entered backup interval
+                var backupTimespan = TimeSpan.FromMinutes(Settings.CurrentSettings.BackupSettings.AutomaticBackupIntervalInMinutes);
+
+                // If no one has logged on or off we can simply exit.
+                if (latestUserConnectedTime == null && latestUserDisconnectionTime == null)
+                {
+                    return;
+                }
+
+                // Check the latest log on and off times to see if users are either currently active or have been active in the last backup interval
+                bool usersHaveBeenActiveOnTheServer = false;
+                if (latestUserConnectedTime > latestUserDisconnectionTime || (latestUserConnectedTime.HasValue && !latestUserDisconnectionTime.HasValue))
+                {
+                    // If a user has connected and not disconnected then we know they're active
+                    usersHaveBeenActiveOnTheServer = true;
+                }
+                else
+                {
+                    // Check if the most recent log off was more that the backup interval ago.  Using local time here because the BDS log times are local.
+                    //  That does mean DST can bite us here, however I'm not going out of my way for a 2x time a year event right now.
+                    usersHaveBeenActiveOnTheServer = (DateTime.Now - latestUserDisconnectionTime!).Value < backupTimespan;
+                }
+
+                // If no one is currently active or been on then just return
+                if (!usersHaveBeenActiveOnTheServer)
+                {
+                    LogManager.LogWarning($"Cancelling automatic backup since there are no users have been active for over {backupTimespan.TotalMinutes} minutes.");
+                    return;
+                }
+            }
+
+            var backupWasSuccessful = await CreateBackupAsync();
+            if (backupWasSuccessful)
+            {
+                LogManager.LogInformation("Automatic back completed successfully.");
+            }
+            else
+            {
+                LogManager.LogError("Automatic backup failed.");
+            }
+        }
+
         /// <summary>
         /// Creates the backup folder with the name of the world and the timestamp when the backup took place.  Should only be called once per backup to avoid getting different targets for the same backup.
         /// </summary>
@@ -41,7 +96,7 @@ namespace MinecraftBdsManager.Managers
         /// Creates a backup of the Minecraft world.  Backups can be taken either as Offline (the server is stopped) or Online (the server is running)
         /// </summary>
         /// <returns>Handle to the async promise and a flag indicating if the backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
-        internal async static Task<bool> CreateBackup()
+        internal async static Task<bool> CreateBackupAsync()
         {
             // In order to create backups for BDS we need to take some things into consideration if the server is online vs when it is not.
             //
@@ -51,7 +106,7 @@ namespace MinecraftBdsManager.Managers
             }
             else
             {
-                return await CreateOnlineBackup();
+                return await CreateOnlineBackupAsync();
             }
         }
 
@@ -70,7 +125,7 @@ namespace MinecraftBdsManager.Managers
         /// Creates a backup when the server is running.  This backup is a more involved process as it requires working with BDS to know the correct files and sizes of those files that need to be saved.
         /// </summary>
         /// <returns>Handle to the async promise and a flag indicating if the backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
-        private async static Task<bool> CreateOnlineBackup()
+        private async static Task<bool> CreateOnlineBackupAsync()
         {
             bool backupWasSuccessful = false;
 
@@ -85,10 +140,17 @@ namespace MinecraftBdsManager.Managers
 
                 //      b. Second step is to poll for backup completion using "save query".  When success is returned it will include a list of files that comprise the backup and the proper lengths of those files.
                 // Poll until the backup files are ready to copy
-                while (!BdsManager.BackupFilesAreReadyToCopy)
+                while (!BdsManager.BackupFilesAreReadyToCopy && BdsManager.ServerIsRunning)
                 {
                     await BdsManager.SaveQueryAsync();
                     await Task.Delay(TimeSpan.FromSeconds(5));
+                }
+
+                // If the server has stopped while waiting for some reason, abort the backup as we will not be getting any more information from the server.
+                if (!BdsManager.ServerIsRunning)
+                {
+                    LogManager.LogWarning("Terminating Online backup due to server shutdown.");
+                    return false;
                 }
 
                 //      c. Third step is to file copy the whole files from the world directory to the backup instance directory
@@ -174,7 +236,8 @@ namespace MinecraftBdsManager.Managers
             foreach (var sourceFilePath in sourceFilePaths)
             {
                 var sourceFileName = Path.GetFileName(sourceFilePath);
-                var targetFilePath = Path.GetFullPath(Path.Combine(targetDirectoryPath, sourceFileName));
+                var targetFileName = GetBackupTargetFileName(sourceFilePath);
+                var targetFilePath = Path.GetFullPath(Path.Combine(targetDirectoryPath, targetFileName));
 
                 try
                 {
@@ -215,13 +278,7 @@ namespace MinecraftBdsManager.Managers
                 try
                 {
                     // Get the name of the file to backup
-                    var backupFileName = Path.GetFileName(backupFile.Path);
-
-                    // When building the targetFilePath we need to ensure to include the /db folder as appropriate
-                    if (backupFile.Path.EndsWith(Path.Combine("db", backupFileName)))
-                    {
-                        backupFileName = Path.Combine("db", backupFileName);
-                    }
+                    var backupFileName = GetBackupTargetFileName(backupFile.Path);
 
                     var targetFilePath = Path.GetFullPath(Path.Combine(backupDirectoryPath, backupFileName));
                     File.Copy(backupFile.Path, targetFilePath, overwrite: false);
@@ -234,6 +291,52 @@ namespace MinecraftBdsManager.Managers
             }
 
             return true;
+        }
+
+        internal static void DisableIntervalBasedBackups()
+        {
+            _backupTimer.Stop();
+        }
+
+        internal static void EnableIntervalBasedBackups()
+        {
+            // Interval from the user should be in minutes...
+            var backupTimerIntervalMinutes = Settings.CurrentSettings.BackupSettings.AutomaticBackupIntervalInMinutes;
+            var backupTimespan = TimeSpan.FromMinutes(backupTimerIntervalMinutes);
+
+            // ... Interval on the timer is in milliseconds, so creating TimeSpan objects of both for easier comparison.
+            var timerIntervalTimespan = TimeSpan.FromMilliseconds(_backupTimer.Interval);
+
+            // Check to see if the intervals match (if they match the result will be 0).  If they don't recreate the timer with the new interval.
+            if (timerIntervalTimespan.CompareTo(backupTimespan) != 0)
+            {
+                // The documentation on Timer has a bunch of screwy talk about how updating intervals after they've been set doing strange things like adding the remaining
+                //  old interval to the new one and such, so I'm just going to kill the Timer outright and make a new one from scratch each time the interval is change
+                //  to minimize the silliness.
+                _backupTimer.Stop();
+                _backupTimer.Dispose();
+
+                _backupTimer = new(backupTimespan.TotalMilliseconds) { AutoReset = true };
+                _backupTimer.Elapsed += BackupTimer_Elapsed;
+            }
+
+            if (!_backupTimer.Enabled)
+            {
+                _backupTimer.Start();
+            }
+        }
+
+        private static string GetBackupTargetFileName(string backupFilePath)
+        {
+            var backupFileName = Path.GetFileName(backupFilePath);
+
+            // When building the targetFilePath we need to ensure to include the /db folder as appropriate
+            if (backupFilePath.EndsWith(Path.Combine("db", backupFileName)))
+            {
+                backupFileName = Path.Combine("db", backupFileName);
+            }
+
+            return backupFileName;
         }
 
         /// <summary>
@@ -259,7 +362,7 @@ namespace MinecraftBdsManager.Managers
             foreach (var backupFile in backupFiles)
             {
                 // Get the path of the backed up file in the backup directory so we can work with it.
-                var backedupFileName = Path.GetFileName(backupFile.Path);
+                var backedupFileName = GetBackupTargetFileName(backupFile.Path);
                 var backedupFilePath = Path.GetFullPath(Path.Combine(backupDirectoryPath, backedupFileName));
 
                 // If the file doesn't exist for some reason then log and fail.
