@@ -44,12 +44,17 @@ namespace MinecraftBdsManager.Logging
 
         public override void Write(string? message)
         {
-            if (string.IsNullOrWhiteSpace(message))
-            {
-                return;
-            }
+            // NOOP for now as this is only adding extra noise to the UI status screen that I would like to keep out.
+            //
+            //  This data is still going to the file logs, if enabled
+            //
 
-            //WriteSafe(message.Replace(nameof(MinecraftBdsManager), ""));
+            //if (string.IsNullOrWhiteSpace(message))
+            //{
+            //    return;
+            //}
+
+            ////WriteSafe(message.Replace(nameof(MinecraftBdsManager), ""));
         }
 
         public override void WriteLine(string? message)
@@ -71,7 +76,7 @@ namespace MinecraftBdsManager.Logging
             if (_listenerTarget.InvokeRequired)
             {
                 void safeWrite() { WriteSafe(message); }
-                _listenerTarget.Invoke(safeWrite);
+                _listenerTarget.BeginInvoke(safeWrite);
             }
             else
             {

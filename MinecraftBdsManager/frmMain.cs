@@ -1,5 +1,6 @@
 ﻿using MinecraftBdsManager.Configuration;
 using MinecraftBdsManager.Logging;
+using MinecraftBdsManager.Managers;
 
 namespace MinecraftBdsManager
 {
@@ -20,6 +21,7 @@ namespace MinecraftBdsManager
             }
 
             await BdsManager.SendCommandAsync(txtCustomCommand.Text, userSentCommand: true);
+            txtCustomCommand.Text = String.Empty;
         }
 
         private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
@@ -36,6 +38,9 @@ namespace MinecraftBdsManager
 
             //  Need one for the status textbox, which will always be present
             LogManager.RegisterUILogger(rtbStatus);
+
+            //  Need one for the log monitor, which will always be present
+            LogManager.RegisterLogMonitor();
 
             //  Need another one for log files, if opted in with valid path
             if (Settings.CurrentSettings.LoggingSettings.EnableLoggingToFile)
@@ -57,9 +62,20 @@ namespace MinecraftBdsManager
             rtbStatus.ScrollToCaret();
         }
 
-        private void toolBtnBackupNow_Click(object sender, EventArgs e)
+        private async void toolBtnBackupNow_Click(object sender, EventArgs e)
         {
+            LogManager.LogInformation("Starting backup...");
 
+            var backupWasSuccessful = await BackupManager.CreateBackup();
+
+            if (backupWasSuccessful)
+            {
+                LogManager.LogInformation("Backup completed successfully");
+            }
+            else
+            {
+                LogManager.LogError("Backup failed.");
+            }
         }
 
         private void toolBtnOpenLogsFolder_Click(object sender, EventArgs e)
@@ -69,7 +85,7 @@ namespace MinecraftBdsManager
 
         private void toolBtnOpenSavesFolder_Click(object sender, EventArgs e)
         {
-
+            ProcessManager.StartProcess(ProcessName.FireAndForget, "explorer.exe", Settings.CurrentSettings.BackupSettings.BackupDirectoryPath);
         }
 
         private void toolBtnShowMap_Click(object sender, EventArgs e)
@@ -87,6 +103,11 @@ namespace MinecraftBdsManager
             }
             var success = await BdsManager.StartAsync();
 
+            while(!BdsManager.ServerIsRunning)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+
             toolBtnStop.Enabled = success;
             toolBtnStart.Enabled = !success;
             _clearStatusBoxOnStart = true;
@@ -98,11 +119,22 @@ namespace MinecraftBdsManager
 
             await BdsManager.StopAsync();
 
+            while (BdsManager.ServerIsRunning)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+
             toolBtnStart.Enabled = true;
         }
 
         private void toolBtnViewLog_Click(object sender, EventArgs e)
         {
+            if (string.IsNullOrWhiteSpace(LogManager.CurrentLogFilePath))
+            {
+                LogManager.LogWarning($"Unable to locate current log file path {LogManager.CurrentLogFilePath}");
+                return;
+            }
+
             ProcessManager.StartProcess(ProcessName.FireAndForget, "explorer.exe", LogManager.CurrentLogFilePath);
         }
 

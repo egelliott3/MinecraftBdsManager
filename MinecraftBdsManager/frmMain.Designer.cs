@@ -30,6 +30,7 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmMain));
             this.toolBarMain = new System.Windows.Forms.ToolStrip();
+            this.toolBtnSettings = new System.Windows.Forms.ToolStripButton();
             this.toolBtnStart = new System.Windows.Forms.ToolStripButton();
             this.toolBtnStop = new System.Windows.Forms.ToolStripButton();
             this.toolBtnViewLog = new System.Windows.Forms.ToolStripButton();
@@ -41,7 +42,6 @@
             this.btnIssueCommand = new System.Windows.Forms.Button();
             this.lblStatusBox = new System.Windows.Forms.Label();
             this.lblCustomCommand = new System.Windows.Forms.Label();
-            this.toolBtnSettings = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
             this.rtbStatus = new System.Windows.Forms.RichTextBox();
             this.toolBarMain.SuspendLayout();
@@ -51,7 +51,7 @@
             // 
             this.toolBarMain.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.toolBarMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.toolBtnSettings,
+            this.toolBtnSettings,
             this.toolBtnStart,
             this.toolBtnStop,
             this.toolBtnViewLog,
@@ -64,6 +64,16 @@
             this.toolBarMain.Padding = new System.Windows.Forms.Padding(0, 7, 3, 0);
             this.toolBarMain.Size = new System.Drawing.Size(1373, 40);
             this.toolBarMain.TabIndex = 6;
+            // 
+            // toolBtnSettings
+            // 
+            this.toolBtnSettings.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolBtnSettings.Image = global::MinecraftBdsManager.Properties.Resources.gears;
+            this.toolBtnSettings.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolBtnSettings.Name = "toolBtnSettings";
+            this.toolBtnSettings.Size = new System.Drawing.Size(34, 28);
+            this.toolBtnSettings.Text = "toolStripButton1";
+            this.toolBtnSettings.ToolTipText = "Minecraft BDS Manager Settings";
             // 
             // toolBtnStart
             // 
@@ -178,16 +188,6 @@
             this.lblCustomCommand.TabIndex = 5;
             this.lblCustomCommand.Text = "Issue command to server";
             // 
-            // toolBtnSettings
-            // 
-            this.toolBtnSettings.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.toolBtnSettings.Image = global::MinecraftBdsManager.Properties.Resources.gears;
-            this.toolBtnSettings.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.toolBtnSettings.Name = "toolBtnSettings";
-            this.toolBtnSettings.Size = new System.Drawing.Size(34, 28);
-            this.toolBtnSettings.Text = "toolStripButton1";
-            this.toolBtnSettings.ToolTipText = "Minecraft BDS Manager Settings";
-            // 
             // toolStripButton1
             // 
             this.toolStripButton1.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
@@ -199,8 +199,8 @@
             // 
             // rtbStatus
             // 
-            this.rtbStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
+            this.rtbStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.rtbStatus.BackColor = System.Drawing.SystemColors.ControlLight;
             this.rtbStatus.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
