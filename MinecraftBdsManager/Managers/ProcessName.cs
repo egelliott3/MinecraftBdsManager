@@ -1,5 +1,5 @@
 ﻿
-namespace MinecraftBdsManager
+namespace MinecraftBdsManager.Managers
 {
     internal enum ProcessName
     {

@@ -2,9 +2,11 @@
 {
     internal class BackupSettings
     {
-        public bool EnableBackupOnServerStart { get; set; } = false;
+        public string BackupDirectoryPath { get; set; } = ".\\Backups";
 
-        public bool EnableBackupOnServerStop { get; set; } = true;
+        public bool BackupOnServerStart { get; set; } = false;
+
+        public bool BackupOnServerStop { get; set; } = true;
 
         public bool EnableAutomaticBackups { get; set; } = true;
 

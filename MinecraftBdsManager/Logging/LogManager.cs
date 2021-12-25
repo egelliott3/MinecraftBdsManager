@@ -12,21 +12,6 @@ namespace MinecraftBdsManager.Logging
 
         internal static string? CurrentLogFilePath { get; private set; }
 
-        private static void RemoveOldLogFiles()
-        {
-            var loggingFilePaths = Directory.GetFiles(Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath, "*.log");
-            // Get the number of files that we already have and count the one that we're creating with this new instance, even though it is not on disk yet.
-            var numberOfLogFilesOnDisk = loggingFilePaths.Length + 1;
-
-            if (numberOfLogFilesOnDisk > Settings.CurrentSettings.LoggingSettings.MaximumNumberOfLogFilesToKeep)
-            {
-                for(int i = 0; i < (numberOfLogFilesOnDisk - Settings.CurrentSettings.LoggingSettings.MaximumNumberOfLogFilesToKeep); i++)
-                {
-                    File.Delete(loggingFilePaths[i]);
-                }
-            }
-        }
-
         public static void LogError(string message)
         {
             Trace.TraceError(string.Concat(LoggingLeadIn.SystemError, " ", message));
@@ -47,11 +32,11 @@ namespace MinecraftBdsManager.Logging
 
             if (string.IsNullOrWhiteSpace(loggingLeadIn))
             {
-                Trace.WriteLine(string.Concat(loggingLeadIn, " ", message));
+                Trace.WriteLine(message);
             }
             else
             {
-                Trace.WriteLine(message);
+                Trace.WriteLine(string.Concat(loggingLeadIn, " ", message));
             }
         }
 
@@ -74,7 +59,7 @@ namespace MinecraftBdsManager.Logging
                 Directory.CreateDirectory(internalLoggingFilePath);
             }
 
-            // Format the log filename to be "MinecraftBdsManager_2009-06-15T134530Z.log using UTC time and...
+            // Format the log filename to be "MinecraftBdsManager_2009-06-15T134530Z.log" using UTC time and...
             var formattedCurrentUtcDateTime = $"{DateTime.UtcNow:O}";
             // ... taking out the colons (:) in order to not make Windows file system upset and...
             formattedCurrentUtcDateTime = formattedCurrentUtcDateTime.Replace(":", string.Empty);
@@ -98,6 +83,15 @@ namespace MinecraftBdsManager.Logging
             }
         }
 
+        public static void RegisterLogMonitor()
+        {
+            var listenerName = "LogMonitorListener";
+            if (Trace.Listeners[listenerName] == null)
+            {
+                Trace.Listeners.Add(new LogMonitoringTraceListener(listenerName));
+            }
+        }
+
         public static void RegisterUILogger(RichTextBox richTextBox, string listenerName = "RichTextBoxLogger", bool unregisterExistingListener = false)
         {
             if (Trace.Listeners[listenerName] != null || unregisterExistingListener)
@@ -109,6 +103,21 @@ namespace MinecraftBdsManager.Logging
             if (Trace.Listeners[listenerName] == null)
             {
                 Trace.Listeners.Add(new RichTextboxTraceListener(richTextBox, listenerName));
+            }
+        }
+
+        private static void RemoveOldLogFiles()
+        {
+            var loggingFilePaths = Directory.GetFiles(Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath, "*.log");
+            // Get the number of files that we already have and count the one that we're creating with this new instance, even though it is not on disk yet.
+            var numberOfLogFilesOnDisk = loggingFilePaths.Length + 1;
+
+            if (numberOfLogFilesOnDisk > Settings.CurrentSettings.LoggingSettings.MaximumNumberOfLogFilesToKeep)
+            {
+                for (int i = 0; i < (numberOfLogFilesOnDisk - Settings.CurrentSettings.LoggingSettings.MaximumNumberOfLogFilesToKeep); i++)
+                {
+                    File.Delete(loggingFilePaths[i]);
+                }
             }
         }
     }

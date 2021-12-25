@@ -2,7 +2,7 @@
 using System.Diagnostics;
 
 
-namespace MinecraftBdsManager
+namespace MinecraftBdsManager.Managers
 {
     internal class ProcessManager : IDisposable
     {
@@ -24,6 +24,8 @@ namespace MinecraftBdsManager
                 {
                     foreach (var processEntry in TrackedProcesses)
                     {
+                        // TODO : Consider a cleaner shutdown process for BDS
+
                         var process = processEntry.Value;
 
                         if (process != null && !process.HasExited)
@@ -89,7 +91,7 @@ namespace MinecraftBdsManager
                 WorkingDirectory = Path.GetDirectoryName(executablePath),
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
+                RedirectStandardError = false,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
@@ -101,14 +103,12 @@ namespace MinecraftBdsManager
             };
 
             newProcess.OutputDataReceived += NewProcess_OutputDataReceived;
-            newProcess.ErrorDataReceived += NewProcess_ErrorDataReceived;
 
             _ = TrackedProcesses.AddOrUpdate(processName, newProcess, (key, oldProcess) => newProcess);
 
             newProcess.Start();
 
             newProcess.BeginOutputReadLine();
-            newProcess.BeginErrorReadLine();
 
             return true;
         }
@@ -130,11 +130,6 @@ namespace MinecraftBdsManager
             newProcess.Start();
 
             return true;
-        }
-
-        private static void NewProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            Trace.TraceError(e.Data);
         }
 
         private static void NewProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
