@@ -66,7 +66,7 @@ namespace MinecraftBdsManager
         {
             LogManager.LogInformation("Starting backup...");
 
-            var backupWasSuccessful = await BackupManager.CreateBackup();
+            var backupWasSuccessful = await BackupManager.CreateBackupAsync();
 
             if (backupWasSuccessful)
             {
@@ -101,9 +101,25 @@ namespace MinecraftBdsManager
             {
                 rtbStatus.Clear();
             }
+
+            if (Settings.CurrentSettings.BackupSettings.BackupOnServerStart)
+            {
+                LogManager.LogInformation("Performing backup on start per user settings.");
+                var backupWasSuccessful = await BackupManager.CreateBackupAsync();
+
+                if (backupWasSuccessful)
+                {
+                    LogManager.LogInformation("Backup completed successfully");
+                }
+                else
+                {
+                    LogManager.LogError("Backup failed.");
+                }
+            }
+
             var success = await BdsManager.StartAsync();
 
-            while(!BdsManager.ServerIsRunning)
+            while (!BdsManager.ServerIsRunning)
             {
                 await Task.Delay(TimeSpan.FromSeconds(2));
             }
@@ -111,6 +127,12 @@ namespace MinecraftBdsManager
             toolBtnStop.Enabled = success;
             toolBtnStart.Enabled = !success;
             _clearStatusBoxOnStart = true;
+
+            // Check if the user has requested to enable automatic backups.
+            if (Settings.CurrentSettings.BackupSettings.EnableAutomaticBackups)
+            {
+                BackupManager.EnableIntervalBasedBackups();
+            }
         }
 
         private async void toolBtnStop_Click(object sender, EventArgs e)
@@ -125,6 +147,28 @@ namespace MinecraftBdsManager
             }
 
             toolBtnStart.Enabled = true;
+
+            // Check if the user has requested to enable automatic backups.
+            if (Settings.CurrentSettings.BackupSettings.EnableAutomaticBackups)
+            {
+                BackupManager.DisableIntervalBasedBackups();
+            }
+
+            // Check if the user wanted a backup on stop and if so, take one
+            if (Settings.CurrentSettings.BackupSettings.BackupOnServerStop)
+            {
+                LogManager.LogInformation("Performing backup on stop per user settings.");
+                var backupWasSuccessful = await BackupManager.CreateBackupAsync();
+
+                if (backupWasSuccessful)
+                {
+                    LogManager.LogInformation("Backup completed successfully");
+                }
+                else
+                {
+                    LogManager.LogError("Backup failed.");
+                }
+            }
         }
 
         private void toolBtnViewLog_Click(object sender, EventArgs e)
@@ -137,6 +181,5 @@ namespace MinecraftBdsManager
 
             ProcessManager.StartProcess(ProcessName.FireAndForget, "explorer.exe", LogManager.CurrentLogFilePath);
         }
-
     }
 }

@@ -217,6 +217,11 @@ namespace MinecraftBdsManager.Managers
                 LogManager.LogInformation(command);
             }
 
+            if (!ServerIsRunning)
+            {
+                LogManager.LogWarning($"Unable to issue command '{command}' since server is not running.");
+            }
+
             await bdsProcess.StandardInput.WriteAsync($"{command}\n");
         }
 
