@@ -236,7 +236,8 @@ namespace MinecraftBdsManager.Managers
             foreach (var sourceFilePath in sourceFilePaths)
             {
                 var sourceFileName = Path.GetFileName(sourceFilePath);
-                var targetFilePath = Path.GetFullPath(Path.Combine(targetDirectoryPath, sourceFileName));
+                var targetFileName = GetBackupTargetFileName(sourceFilePath);
+                var targetFilePath = Path.GetFullPath(Path.Combine(targetDirectoryPath, targetFileName));
 
                 try
                 {
