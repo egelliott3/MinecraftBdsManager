@@ -6,6 +6,6 @@
 
         public string FileLoggingDirectoryPath { get; set; } = @".\";
 
-        public int MaximumNumberOfLogFilesToKeep { get; set; } = 5;
+        public int KeepLogsForNumberOfDays { get; set; } = 3;
     }
 }
