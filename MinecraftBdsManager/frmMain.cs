@@ -42,12 +42,6 @@ namespace MinecraftBdsManager
             //  Need one for the log monitor, which will always be present
             LogManager.RegisterLogMonitor();
 
-            //  Need another one for log files, if opted in with valid path
-            if (Settings.CurrentSettings.LoggingSettings.EnableLoggingToFile)
-            {
-                LogManager.RegisterFileLogger(Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath);
-            }
-
             // If autostart is enabled then start the server
             if (Settings.CurrentSettings.AutoStartBedrockDedicatedServer)
             {
@@ -100,6 +94,12 @@ namespace MinecraftBdsManager
             if (_clearStatusBoxOnStart)
             {
                 rtbStatus.Clear();
+            }
+
+            //  If the user has asked for log files, create a new log file per start
+            if (Settings.CurrentSettings.LoggingSettings.EnableLoggingToFile)
+            {
+                LogManager.RegisterFileLogger(Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath, unregisterExistingListener: true);
             }
 
             if (Settings.CurrentSettings.BackupSettings.BackupOnServerStart)
