@@ -5,6 +5,7 @@ namespace MinecraftBdsManager.Managers
 {
     internal class BackupManager
     {
+        private const string DAILY_BACKUP_DIRECTORY_NAME_PREFIX = "Daily_";
         private static System.Timers.Timer _backupTimer = new() { Enabled = false };
 
         private async static void BackupTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -71,15 +72,29 @@ namespace MinecraftBdsManager.Managers
 
             // Format the log filename to be "<worldName>_2009-06-15T134530Z" using UTC time and...
             var formattedCurrentUtcDateTime = $"{DateTime.UtcNow:O}";
-
+            
             // ... taking out the colons (:) in order to not make Windows file system upset and...
             formattedCurrentUtcDateTime = formattedCurrentUtcDateTime.Replace(":", string.Empty);
 
             // ... remove the milliseconds/fractional seconds as they are not super useful and the plop the Z back on the end to keep the UTC signifier and...
             formattedCurrentUtcDateTime = string.Concat(formattedCurrentUtcDateTime.Substring(0, formattedCurrentUtcDateTime.IndexOf(".")), "Z");
 
+            // Create the directory name
+            var backupDirectoryName = $"{BdsManager.LevelName}_{formattedCurrentUtcDateTime}";
+
+            // Pull out just the date part to allow us to easily check if we have a Daily backup folder yet today
+            var shortDateFormCurrentUtcDateTime = formattedCurrentUtcDateTime[0..formattedCurrentUtcDateTime.IndexOf("T")];
+
+            // Check to see if we have existing directories from "today"
+            if (!Directory.GetDirectories(backupDirectoryPathRoot, $"*{shortDateFormCurrentUtcDateTime}*").Any())
+            {
+                // Append the daily prefix
+                backupDirectoryName = string.Concat(DAILY_BACKUP_DIRECTORY_NAME_PREFIX, backupDirectoryName);
+            }
+
             // ... finally put it all together with the level name
-            var backupDirectoryPath = Path.GetFullPath(Path.Combine(backupDirectoryPathRoot, $"{BdsManager.LevelName}_{formattedCurrentUtcDateTime}"));
+            var backupDirectoryPath = Path.GetFullPath(Path.Combine(backupDirectoryPathRoot, backupDirectoryName));
+
 
             if (!Directory.Exists(backupDirectoryPath))
             {
@@ -386,7 +401,7 @@ namespace MinecraftBdsManager.Managers
             foreach (DirectoryInfo directoryInfo in individualBackupInfos)
             {
                 // Check if this is a daily directory
-                if (directoryInfo.Name.StartsWith("Daily"))
+                if (directoryInfo.Name.StartsWith(DAILY_BACKUP_DIRECTORY_NAME_PREFIX))
                 {
                     if (directoryInfo.CreationTime < dailyBackupDeleteDateThreshold)
                     {
