@@ -14,8 +14,8 @@
 
         public bool OnlyBackupIfUsersWereOnline { get; set; } = true;
 
-        public int KeepLastNumberOfBackups { get; set; } = 5;
+        public int KeepBackupsForNumberOfDays { get; set; } = 2;
 
-        public int KeepLastNumberOfDailyBackups { get; set; } = 7;
+        public int KeepDailyBackupsForNumberOfDays { get; set; } = 7;
     }
 }

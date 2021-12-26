@@ -108,15 +108,23 @@ namespace MinecraftBdsManager.Logging
 
         private static void RemoveOldLogFiles()
         {
-            var loggingFilePaths = Directory.GetFiles(Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath, "*.log");
-            // Get the number of files that we already have and count the one that we're creating with this new instance, even though it is not on disk yet.
-            var numberOfLogFilesOnDisk = loggingFilePaths.Length + 1;
+            // Grab the root of the logging directory path to get information about its files
+            DirectoryInfo loggingDirectoryInfo = new(Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath);
 
-            if (numberOfLogFilesOnDisk > Settings.CurrentSettings.LoggingSettings.MaximumNumberOfLogFilesToKeep)
+            FileInfo[] logFileInfos = loggingDirectoryInfo.GetFiles("*.log");
+
+            // Establish time borders for when logs should be removed.
+            //  If they user has specified 0 keep days, this means keep forever so set the threshold to DateTime.MaxValue, otherwise compute the appropriate threshold
+            DateTime logDeleteDateThreshold =
+                Settings.CurrentSettings.LoggingSettings.KeepLogsForNumberOfDays == 0
+                ? DateTime.MaxValue
+                : DateTime.Now.AddDays(-Settings.CurrentSettings.LoggingSettings.KeepLogsForNumberOfDays);
+
+            foreach(FileInfo logInfo in logFileInfos)
             {
-                for (int i = 0; i < (numberOfLogFilesOnDisk - Settings.CurrentSettings.LoggingSettings.MaximumNumberOfLogFilesToKeep); i++)
+                if (logInfo.LastWriteTime <= logDeleteDateThreshold)
                 {
-                    File.Delete(loggingFilePaths[i]);
+                    logInfo.Delete();
                 }
             }
         }

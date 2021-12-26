@@ -93,105 +93,6 @@ namespace MinecraftBdsManager.Managers
         }
 
         /// <summary>
-        /// Creates a backup of the Minecraft world.  Backups can be taken either as Offline (the server is stopped) or Online (the server is running)
-        /// </summary>
-        /// <returns>Handle to the async promise and a flag indicating if the backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
-        internal async static Task<bool> CreateBackupAsync()
-        {
-            // In order to create backups for BDS we need to take some things into consideration if the server is online vs when it is not.
-            //
-            if (!BdsManager.ServerIsRunning)
-            {
-                return CreateOfflineBackup();
-            }
-            else
-            {
-                return await CreateOnlineBackupAsync();
-            }
-        }
-
-        /// <summary>
-        /// Creates a backup when the server is not running.  This is a straight forward file copy as we know the world state is not changing.
-        /// </summary>
-        /// <returns>Flag indicating if the offline backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
-        private static bool CreateOfflineBackup()
-        {
-            //  1. If the server is offline/stopped we can simply copy out the world files as they are static since the world is not actively being hosted.
-            var sourceDirectory = Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, BdsManager.WorldDirectoryPath!);
-            return CopyDirectoryContents(sourceDirectory, BuildBackupDirectoryPath());
-        }
-
-        /// <summary>
-        /// Creates a backup when the server is running.  This backup is a more involved process as it requires working with BDS to know the correct files and sizes of those files that need to be saved.
-        /// </summary>
-        /// <returns>Handle to the async promise and a flag indicating if the backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
-        private async static Task<bool> CreateOnlineBackupAsync()
-        {
-            bool backupWasSuccessful = false;
-
-            //  2. If the server is online then a specific process needs to be followed in order to ensure we have uncorrupted backups.
-            try
-            {
-                //      a. First step is to issue a "save hold" command to BDS which will prepare the server for backup.  This call returns immediately and requires follow up polling.
-                await BdsManager.SaveHoldAsync();
-
-                // Give BDS a moment to actually respond to the command before spamming the next one
-                await Task.Delay(TimeSpan.FromSeconds(2));
-
-                //      b. Second step is to poll for backup completion using "save query".  When success is returned it will include a list of files that comprise the backup and the proper lengths of those files.
-                // Poll until the backup files are ready to copy
-                while (!BdsManager.BackupFilesAreReadyToCopy && BdsManager.ServerIsRunning)
-                {
-                    await BdsManager.SaveQueryAsync();
-                    await Task.Delay(TimeSpan.FromSeconds(5));
-                }
-
-                // If the server has stopped while waiting for some reason, abort the backup as we will not be getting any more information from the server.
-                if (!BdsManager.ServerIsRunning)
-                {
-                    LogManager.LogWarning("Terminating Online backup due to server shutdown.");
-                    return false;
-                }
-
-                //      c. Third step is to file copy the whole files from the world directory to the backup instance directory
-                var sourceDirectory = Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, BdsManager.WorldDirectoryPath!);
-                var backupDirectoryPath = BuildBackupDirectoryPath();
-                var backupFileSet = BdsManager.BackupFiles;
-                backupWasSuccessful = CopyFilesInBackupSet(backupDirectoryPath, backupFileSet);
-
-                if (!backupWasSuccessful)
-                {
-                    return backupWasSuccessful;
-                }
-
-                //      d. Fourth step is to call "save resume" on BDS to let the server know that we're done copying files and it can go about it's normal business
-                await BdsManager.SaveResumeAsync();
-
-                //      e. Fifth and final step is to truncate the files that are in the backup instance directory to the sizes specified from the successful "save query" result.
-                //          I. This should be done by writing the appropriate byte count of each file to a temp copy of that same file, deleting the backed up version and replacing it with the temp version.
-                //              This will avoid us getting in our own way when doing the file truncation and ensure we have a clean set of files at the end.
-                backupWasSuccessful = TrimBackupFiles(backupDirectoryPath, backupFileSet);
-            }
-            catch (Exception ex)
-            {
-                LogManager.LogError($"Backup was not successful.  The error encountered was {ex}.");
-                backupWasSuccessful = false;
-            }
-            finally
-            {
-                // Check with BdsManager to see if the server is making changes to the files again.  This is done by checking the BackupFilesAreReadyToCopy field.  
-                //  A value of true here means the server is still in a "save hold" state.
-                if (BdsManager.BackupFilesAreReadyToCopy)
-                {
-                    // Since BDS is still in a "save hold" state we need to issue a "save resume" command.
-                    await BdsManager.SaveResumeAsync();
-                }
-            }
-
-            return backupWasSuccessful;
-        }
-
-        /// <summary>
         /// Copies everything in the source directory, including subfolders, to the target directory
         /// </summary>
         /// <param name="sourceDirectoryPath">Source location for files to be copied.</param>
@@ -293,11 +194,122 @@ namespace MinecraftBdsManager.Managers
             return true;
         }
 
+        /// <summary>
+        /// Creates a backup of the Minecraft world.  Backups can be taken either as Offline (the server is stopped) or Online (the server is running)
+        /// </summary>
+        /// <returns>Handle to the async promise and a flag indicating if the backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
+        internal async static Task<bool> CreateBackupAsync()
+        {
+            bool backupWasSuccessful = false;
+
+            // In order to create backups for BDS we need to take some things into consideration if the server is online vs when it is not.
+            //
+            if (!BdsManager.ServerIsRunning)
+            {
+                backupWasSuccessful = CreateOfflineBackup();
+            }
+            else
+            {
+                backupWasSuccessful = await CreateOnlineBackupAsync();
+            }
+
+            PerformBackupDirectoryMaintenance();
+
+            return backupWasSuccessful;
+        }
+
+        /// <summary>
+        /// Creates a backup when the server is not running.  This is a straight forward file copy as we know the world state is not changing.
+        /// </summary>
+        /// <returns>Flag indicating if the offline backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
+        private static bool CreateOfflineBackup()
+        {
+            //  1. If the server is offline/stopped we can simply copy out the world files as they are static since the world is not actively being hosted.
+            var sourceDirectory = Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, BdsManager.WorldDirectoryPath!);
+            return CopyDirectoryContents(sourceDirectory, BuildBackupDirectoryPath());
+        }
+
+        /// <summary>
+        /// Creates a backup when the server is running.  This backup is a more involved process as it requires working with BDS to know the correct files and sizes of those files that need to be saved.
+        /// </summary>
+        /// <returns>Handle to the async promise and a flag indicating if the backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
+        private async static Task<bool> CreateOnlineBackupAsync()
+        {
+            bool backupWasSuccessful = false;
+
+            //  2. If the server is online then a specific process needs to be followed in order to ensure we have uncorrupted backups.
+            try
+            {
+                //      a. First step is to issue a "save hold" command to BDS which will prepare the server for backup.  This call returns immediately and requires follow up polling.
+                await BdsManager.SaveHoldAsync();
+
+                // Give BDS a moment to actually respond to the command before spamming the next one
+                await Task.Delay(TimeSpan.FromSeconds(2));
+
+                //      b. Second step is to poll for backup completion using "save query".  When success is returned it will include a list of files that comprise the backup and the proper lengths of those files.
+                // Poll until the backup files are ready to copy
+                while (!BdsManager.BackupFilesAreReadyToCopy && BdsManager.ServerIsRunning)
+                {
+                    await BdsManager.SaveQueryAsync();
+                    await Task.Delay(TimeSpan.FromSeconds(5));
+                }
+
+                // If the server has stopped while waiting for some reason, abort the backup as we will not be getting any more information from the server.
+                if (!BdsManager.ServerIsRunning)
+                {
+                    LogManager.LogWarning("Terminating Online backup due to server shutdown.");
+                    return false;
+                }
+
+                //      c. Third step is to file copy the whole files from the world directory to the backup instance directory
+                var sourceDirectory = Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, BdsManager.WorldDirectoryPath!);
+                var backupDirectoryPath = BuildBackupDirectoryPath();
+                var backupFileSet = BdsManager.BackupFiles;
+                backupWasSuccessful = CopyFilesInBackupSet(backupDirectoryPath, backupFileSet);
+
+                if (!backupWasSuccessful)
+                {
+                    return backupWasSuccessful;
+                }
+
+                //      d. Fourth step is to call "save resume" on BDS to let the server know that we're done copying files and it can go about it's normal business
+                await BdsManager.SaveResumeAsync();
+
+                //      e. Fifth and final step is to truncate the files that are in the backup instance directory to the sizes specified from the successful "save query" result.
+                //          I. This should be done by writing the appropriate byte count of each file to a temp copy of that same file, deleting the backed up version and replacing it with the temp version.
+                //              This will avoid us getting in our own way when doing the file truncation and ensure we have a clean set of files at the end.
+                backupWasSuccessful = TrimBackupFiles(backupDirectoryPath, backupFileSet);
+            }
+            catch (Exception ex)
+            {
+                LogManager.LogError($"Backup was not successful.  The error encountered was {ex}.");
+                backupWasSuccessful = false;
+            }
+            finally
+            {
+                // Check with BdsManager to see if the server is making changes to the files again.  This is done by checking the BackupFilesAreReadyToCopy field.  
+                //  A value of true here means the server is still in a "save hold" state.
+                if (BdsManager.BackupFilesAreReadyToCopy)
+                {
+                    // Since BDS is still in a "save hold" state we need to issue a "save resume" command.
+                    await BdsManager.SaveResumeAsync();
+                }
+            }
+
+            return backupWasSuccessful;
+        }
+
+        /// <summary>
+        /// Stops the backup timer, disabling the interval based backups
+        /// </summary>
         internal static void DisableIntervalBasedBackups()
         {
             _backupTimer.Stop();
         }
 
+        /// <summary>
+        /// Creates, if needed, and starts the backup timer, enabling the interval based backups
+        /// </summary>
         internal static void EnableIntervalBasedBackups()
         {
             // Interval from the user should be in minutes...
@@ -326,6 +338,11 @@ namespace MinecraftBdsManager.Managers
             }
         }
 
+        /// <summary>
+        /// Creates a properly formatted backup name for the target backup file from the source file path
+        /// </summary>
+        /// <param name="backupFilePath">Path to the file that is being backed up.</param>
+        /// <returns>The file name for the backup file that is being written.</returns>
         private static string GetBackupTargetFileName(string backupFilePath)
         {
             var backupFileName = Path.GetFileName(backupFilePath);
@@ -337,6 +354,69 @@ namespace MinecraftBdsManager.Managers
             }
 
             return backupFileName;
+        }
+
+        /// <summary>
+        /// Handles the tasks of ensuring that the KeepLastNumberOfBackups and KeepLastNumberOfDailyBackups settings are properly followed.
+        /// </summary>
+        private static void PerformBackupDirectoryMaintenance()
+        {
+            // Grab the root of the backup directory path to get information about its subdirectories
+            DirectoryInfo backupDirectoryInfo = new(Settings.CurrentSettings.BackupSettings.BackupDirectoryPath);
+
+            // Get information about each of the subdirectories.
+            DirectoryInfo[] individualBackupInfos = backupDirectoryInfo.GetDirectories();
+
+            // Snapshot the "now" time to ensure we get the same calculations each time we use it
+            DateTime now = DateTime.Now;
+
+            // Establish time borders for when backups should be removed.
+            //  If they user has specified 0 keep days, this means keep forever so set the threshold to DateTime.MaxValue, otherwise compute the appropriate threshold
+            DateTime normalBackupDeleteDateThreshold =
+                Settings.CurrentSettings.BackupSettings.KeepBackupsForNumberOfDays == 0
+                ? DateTime.MaxValue
+                : now.AddDays(-Settings.CurrentSettings.BackupSettings.KeepBackupsForNumberOfDays);
+
+            DateTime dailyBackupDeleteDateThreshold =
+                Settings.CurrentSettings.BackupSettings.KeepDailyBackupsForNumberOfDays == 0
+                ? DateTime.MaxValue
+                : now.AddDays(-Settings.CurrentSettings.BackupSettings.KeepDailyBackupsForNumberOfDays);
+
+            // Go through each directory and see if it should be kept or not.
+            foreach (DirectoryInfo directoryInfo in individualBackupInfos)
+            {
+                // Check if this is a daily directory
+                if (directoryInfo.Name.StartsWith("Daily"))
+                {
+                    if (directoryInfo.CreationTime < dailyBackupDeleteDateThreshold)
+                    {
+                        try
+                        {
+                            directoryInfo.Delete(recursive: true);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.LogError($"There was a problem cleaning up regular backups. The error was {ex}.");
+                        }
+                    }
+
+                    // Since this check only applies to daily, and we just did it, move to the next entry
+                    continue;
+                }
+
+                // Do a check on the non-daily directories
+                if (directoryInfo.CreationTime < normalBackupDeleteDateThreshold)
+                {
+                    try
+                    {
+                        directoryInfo.Delete(recursive: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.LogError($"There was a problem cleaning up daily backups. The error was {ex}.");
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -387,7 +467,7 @@ namespace MinecraftBdsManager.Managers
                 }
 
                 // Truncate original file in place
-                using(var originalFileReader = File.Open(backedupFilePath, FileMode.Open, FileAccess.ReadWrite))
+                using (var originalFileReader = File.Open(backedupFilePath, FileMode.Open, FileAccess.ReadWrite))
                 {
                     // Setting the length of the file to the length specified from BDS will truncate it to the proper size
                     originalFileReader.SetLength(backupFile.Length);
