@@ -36,7 +36,6 @@
             this.toolBtnViewLog = new System.Windows.Forms.ToolStripButton();
             this.toolBtnOpenLogsFolder = new System.Windows.Forms.ToolStripButton();
             this.toolBtnOpenSavesFolder = new System.Windows.Forms.ToolStripButton();
-            this.toolBtnShowMap = new System.Windows.Forms.ToolStripButton();
             this.toolBtnBackupNow = new System.Windows.Forms.ToolStripButton();
             this.txtCustomCommand = new System.Windows.Forms.TextBox();
             this.btnIssueCommand = new System.Windows.Forms.Button();
@@ -57,7 +56,6 @@
             this.toolBtnViewLog,
             this.toolBtnOpenLogsFolder,
             this.toolBtnOpenSavesFolder,
-            this.toolBtnShowMap,
             this.toolBtnBackupNow});
             this.toolBarMain.Location = new System.Drawing.Point(0, 0);
             this.toolBarMain.Name = "toolBarMain";
@@ -130,17 +128,6 @@
             this.toolBtnOpenSavesFolder.Text = "toolStripButton4";
             this.toolBtnOpenSavesFolder.ToolTipText = "Open backups folder";
             this.toolBtnOpenSavesFolder.Click += new System.EventHandler(this.toolBtnOpenSavesFolder_Click);
-            // 
-            // toolBtnShowMap
-            // 
-            this.toolBtnShowMap.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.toolBtnShowMap.Image = global::MinecraftBdsManager.Properties.Resources.earth_view;
-            this.toolBtnShowMap.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.toolBtnShowMap.Name = "toolBtnShowMap";
-            this.toolBtnShowMap.Size = new System.Drawing.Size(34, 28);
-            this.toolBtnShowMap.Text = "toolStripButton5";
-            this.toolBtnShowMap.ToolTipText = "Show world map";
-            this.toolBtnShowMap.Click += new System.EventHandler(this.toolBtnShowMap_Click);
             // 
             // toolBtnBackupNow
             // 
@@ -244,7 +231,6 @@
         private ToolStripButton toolBtnViewLog;
         private ToolStripButton toolBtnOpenLogsFolder;
         private ToolStripButton toolBtnOpenSavesFolder;
-        private ToolStripButton toolBtnShowMap;
         private ToolStripButton toolBtnBackupNow;
         private TextBox txtCustomCommand;
         private Button btnIssueCommand;

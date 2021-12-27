@@ -82,11 +82,6 @@ namespace MinecraftBdsManager
             ProcessManager.StartProcess(ProcessName.FireAndForget, "explorer.exe", Settings.CurrentSettings.BackupSettings.BackupDirectoryPath);
         }
 
-        private void toolBtnShowMap_Click(object sender, EventArgs e)
-        {
-
-        }
-
         private async void toolBtnStart_Click(object sender, EventArgs e)
         {
             toolBtnStart.Enabled = false;
@@ -132,6 +127,12 @@ namespace MinecraftBdsManager
             if (Settings.CurrentSettings.BackupSettings.EnableAutomaticBackups)
             {
                 BackupManager.EnableIntervalBasedBackups();
+            }
+
+            // Check if the user has requested to enable automatic map generation.
+            if (Settings.CurrentSettings.MapSettings.EnableMapGeneration)
+            {
+                MapManager.EnableIntervalBasedMapGeneration();
             }
         }
 
