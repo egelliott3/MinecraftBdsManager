@@ -43,7 +43,7 @@ namespace MinecraftBdsManager.Managers
             }
         }
 
-        public static bool StartProcess(ProcessName processName, string executablePath, string arguments)
+        public static bool StartProcess(ProcessName processName, string executablePath, string arguments, bool outputShouldBeRedirected = true)
         {
             if (processName == ProcessName.Unknown)
             {
@@ -90,7 +90,7 @@ namespace MinecraftBdsManager.Managers
                 Arguments = arguments,
                 WorkingDirectory = Path.GetDirectoryName(executablePath),
                 RedirectStandardInput = true,
-                RedirectStandardOutput = true,
+                RedirectStandardOutput = outputShouldBeRedirected,
                 RedirectStandardError = false,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -102,13 +102,19 @@ namespace MinecraftBdsManager.Managers
                 StartInfo = processStartInfo
             };
 
-            newProcess.OutputDataReceived += NewProcess_OutputDataReceived;
+            if (outputShouldBeRedirected)
+            {
+                newProcess.OutputDataReceived += NewProcess_OutputDataReceived;
+            }
 
             _ = TrackedProcesses.AddOrUpdate(processName, newProcess, (key, oldProcess) => newProcess);
 
             newProcess.Start();
 
-            newProcess.BeginOutputReadLine();
+            if (outputShouldBeRedirected)
+            {
+                newProcess.BeginOutputReadLine();
+            }
 
             return true;
         }

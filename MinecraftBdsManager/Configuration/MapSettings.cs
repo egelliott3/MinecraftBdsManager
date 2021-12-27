@@ -6,12 +6,12 @@
 
         public int MapGenerationIntervalInMinutes { get; set; } = 90;
 
-        public string PapyrusExePath { get; set; } = string.Empty;
+        public string MapperExePath { get; set; } = string.Empty;
 
-        public string PapyrusOutputPath { get; set; } = string.Empty;
+        public string MapperOutputPath { get; set; } = ".\\Maps";
 
-        public string PapyrusExeArguments { get; set; } = "-w $WORLD_PATH -o $OUTPUT_PATH --htmlfile index.html -f png -q -1 --deleteexistingupdatefolder";
+        public string MapperExeArguments { get; set; } = "-w $WORLD_PATH -o $OUTPUT_PATH --htmlfile index.html -f png -q -1 --deleteexistingupdatefolder";
 
-        public string[] PapyrusTasks { get; set; } = new string[] { "--dim 0", "--dim 1", "--dim 2" };
+        public string[] MapperExeArgumentVariations { get; set; } = new string[] { "--dim 0", "--dim 1", "--dim 2" };
     }
 }
