@@ -1,7 +1,8 @@
 ﻿using MinecraftBdsManager.Configuration;
+using MinecraftBdsManager.Logging;
 using System.Diagnostics;
 
-namespace MinecraftBdsManager.Logging
+namespace MinecraftBdsManager.Managers
 {
     internal static class LogManager
     {
@@ -14,12 +15,12 @@ namespace MinecraftBdsManager.Logging
 
         public static void LogError(string message)
         {
-            Trace.TraceError(string.Concat(LoggingLeadIn.SystemError, " ", message));
+            Trace.TraceError(string.Concat(LoggingLeadIn.BuildLeadIn(LoggingLeadIn.SystemErrorMessage), " ", message));
         }
 
         public static void LogInformation(string message)
         {
-            Trace.TraceInformation(string.Concat(LoggingLeadIn.SystemInfo, " ", message));
+            Trace.TraceInformation(string.Concat(LoggingLeadIn.BuildLeadIn(LoggingLeadIn.SystemInfoMessage), " ", message));
         }
 
         public static void LogVerbose(string loggingLeadIn, string message)
@@ -42,7 +43,7 @@ namespace MinecraftBdsManager.Logging
 
         public static void LogWarning(string message)
         {
-            Trace.TraceInformation(string.Concat(LoggingLeadIn.SystemWarning, " ", message));
+            Trace.TraceInformation(string.Concat(LoggingLeadIn.BuildLeadIn(LoggingLeadIn.SystemWarningMessage), " ", message));
         }
 
         public static void RegisterFileLogger(string loggingFilePath, string listenerName = "FileLogger", bool unregisterExistingListener = false)

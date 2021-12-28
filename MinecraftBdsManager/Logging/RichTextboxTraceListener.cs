@@ -10,10 +10,10 @@ namespace MinecraftBdsManager.Logging
         private static readonly List<RichTextboxMessageFormatting> _messageFormatting = new List<RichTextboxMessageFormatting>
         {
             new RichTextboxMessageFormatting{ TextToMatch = LoggingLeadIn.UserSentMessage, Color = Color.CornflowerBlue, FontStyle = FontStyle.Bold },
-            new RichTextboxMessageFormatting{ TextToMatch = LoggingLeadIn.SystemChat, Color = Color.Orange, FontStyle = FontStyle.Bold },
-            new RichTextboxMessageFormatting{ TextToMatch = LoggingLeadIn.SystemError, Color = Color.DarkRed, FontStyle = FontStyle.Bold },
-            new RichTextboxMessageFormatting{ TextToMatch = LoggingLeadIn.SystemWarning, Color = Color.DarkGoldenrod, FontStyle = FontStyle.Bold },
-            new RichTextboxMessageFormatting{ TextToMatch = LoggingLeadIn.SystemInfo, Color = Color.Green, FontStyle = FontStyle.Bold },           
+            new RichTextboxMessageFormatting{ TextToMatch = LoggingLeadIn.SystemChatMessage, Color = Color.Orange, FontStyle = FontStyle.Bold },
+            new RichTextboxMessageFormatting{ TextToMatch = LoggingLeadIn.SystemErrorMessage, Color = Color.DarkRed, FontStyle = FontStyle.Bold },
+            new RichTextboxMessageFormatting{ TextToMatch = LoggingLeadIn.SystemWarningMessage, Color = Color.DarkGoldenrod, FontStyle = FontStyle.Bold },
+            new RichTextboxMessageFormatting{ TextToMatch = LoggingLeadIn.SystemInfoMessage, Color = Color.Green, FontStyle = FontStyle.Bold },           
         };
 
         private readonly RichTextBox _listenerTarget;
@@ -29,7 +29,7 @@ namespace MinecraftBdsManager.Logging
             foreach (var formatting in _messageFormatting)
             {
                 // ... see if any match and apply the formatting if they do
-                if (message.StartsWith(formatting.TextToMatch))
+                if (message.Contains(formatting.TextToMatch))
                 {
                     _listenerTarget.SelectionStart = _listenerTarget.TextLength;
                     _listenerTarget.SelectionLength = 0;

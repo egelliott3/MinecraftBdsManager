@@ -66,6 +66,40 @@ namespace MinecraftBdsManager.Managers
         /// </summary>
         public static string? WorldDirectoryPath { get; private set; }
 
+        /// <summary>
+        /// Determines if users have active on the server in the last time interval specified
+        /// </summary>
+        /// <param name="timeIntervalToCheckForActiveUsers">Interval of time, expressed as a TimeSpan, to check to see if users have been active on the server.</param>
+        /// <returns></returns>
+        internal static bool HaveUsersBeenOnInTheLastAmountOfTime(TimeSpan timeIntervalToCheckForActiveUsers)
+        {
+            // Get when a user most recently logged off
+            var latestUserDisconnectionTime = BdsManager.UserLastLoggedOffAt;
+            var latestUserConnectedTime = BdsManager.UserLastLoggedOnAt;
+
+            bool usersHaveBeenActiveOnTheServer = false;
+
+            // If no one has logged on or off we can simply exit.
+            if (latestUserConnectedTime == null && latestUserDisconnectionTime == null)
+            {
+                return usersHaveBeenActiveOnTheServer;
+            }
+
+            // Check the latest log on and off times to see if users are either currently active or have been active in the last backup interval
+            if (latestUserConnectedTime > latestUserDisconnectionTime || (latestUserConnectedTime.HasValue && !latestUserDisconnectionTime.HasValue))
+            {
+                // If a user has connected and not disconnected then we know they're active
+                usersHaveBeenActiveOnTheServer = true;
+            }
+            else
+            {
+                // Check if the most recent log off was more that the backup interval ago.  Using local time here because the BDS log times are local.
+                //  That does mean DST can bite us here, however I'm not going out of my way for a 2x time a year event right now.
+                usersHaveBeenActiveOnTheServer = (DateTime.Now - latestUserDisconnectionTime!).Value < timeIntervalToCheckForActiveUsers;
+            }
+
+            return usersHaveBeenActiveOnTheServer;
+        }
 
         /// <summary>
         /// BdsMonitor will watch LogMonitor updates to see when there are updates that are important to it and record them
@@ -210,7 +244,7 @@ namespace MinecraftBdsManager.Managers
 
             if (userSentCommand)
             {
-                LogManager.LogVerbose(LoggingLeadIn.UserSentMessage, command);
+                LogManager.LogVerbose(LoggingLeadIn.BuildLeadIn(LoggingLeadIn.UserSentMessage), command);
             }
             else
             {

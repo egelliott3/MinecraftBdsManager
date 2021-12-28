@@ -8,47 +8,30 @@ namespace MinecraftBdsManager.Managers
         private const string DAILY_BACKUP_DIRECTORY_NAME_PREFIX = "Daily_";
         private static System.Timers.Timer _backupTimer = new() { Enabled = false };
 
+        /// <summary>
+        /// Event handler for when the backup timer triggers, indicating its time for a backup
+        /// </summary>
+        /// <param name="sender">Caller of the event handler.</param>
+        /// <param name="e">Parameters including the details of the timer when it fired.</param>
         private async static void BackupTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            LogManager.LogInformation("Automatic backup is starting.");
-
             // Check settings to see if the user wanted to do a backup only if players had been online
             if (Settings.CurrentSettings.BackupSettings.OnlyBackupIfUsersWereOnline)
             {
-                // Get when a user most recently logged off
-                var latestUserDisconnectionTime = BdsManager.UserLastLoggedOffAt;
-                var latestUserConnectedTime = BdsManager.UserLastLoggedOnAt;
-
                 // User entered backup interval
                 var backupTimespan = TimeSpan.FromMinutes(Settings.CurrentSettings.BackupSettings.AutomaticBackupIntervalInMinutes);
 
-                // If no one has logged on or off we can simply exit.
-                if (latestUserConnectedTime == null && latestUserDisconnectionTime == null)
-                {
-                    return;
-                }
-
-                // Check the latest log on and off times to see if users are either currently active or have been active in the last backup interval
-                bool usersHaveBeenActiveOnTheServer = false;
-                if (latestUserConnectedTime > latestUserDisconnectionTime || (latestUserConnectedTime.HasValue && !latestUserDisconnectionTime.HasValue))
-                {
-                    // If a user has connected and not disconnected then we know they're active
-                    usersHaveBeenActiveOnTheServer = true;
-                }
-                else
-                {
-                    // Check if the most recent log off was more that the backup interval ago.  Using local time here because the BDS log times are local.
-                    //  That does mean DST can bite us here, however I'm not going out of my way for a 2x time a year event right now.
-                    usersHaveBeenActiveOnTheServer = (DateTime.Now - latestUserDisconnectionTime!).Value < backupTimespan;
-                }
+                var usersHaveBeenActiveOnTheServer = BdsManager.HaveUsersBeenOnInTheLastAmountOfTime(backupTimespan);
 
                 // If no one is currently active or been on then just return
                 if (!usersHaveBeenActiveOnTheServer)
                 {
-                    LogManager.LogWarning($"Cancelling automatic backup since there are no users have been active for over {backupTimespan.TotalMinutes} minutes.");
+                    LogManager.LogInformation($"Skipping automatic backup since there are no users have been active for over {backupTimespan.TotalMinutes} minutes.");
                     return;
                 }
             }
+
+            LogManager.LogInformation("Automatic backup is starting.");
 
             var backupWasSuccessful = await CreateBackupAsync();
             if (backupWasSuccessful)
@@ -215,20 +198,30 @@ namespace MinecraftBdsManager.Managers
         /// <returns>Handle to the async promise and a flag indicating if the backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
         internal async static Task<bool> CreateBackupAsync()
         {
-            bool backupWasSuccessful = false;
+            bool backupWasSuccessful;
 
-            // In order to create backups for BDS we need to take some things into consideration if the server is online vs when it is not.
-            //
-            if (!BdsManager.ServerIsRunning)
+            try
             {
-                backupWasSuccessful = CreateOfflineBackup();
-            }
-            else
-            {
-                backupWasSuccessful = await CreateOnlineBackupAsync();
-            }
+                // In order to create backups for BDS we need to take some things into consideration if the server is online vs when it is not.
+                //
+                if (!BdsManager.ServerIsRunning)
+                {
+                    backupWasSuccessful = CreateOfflineBackup();
+                }
+                else
+                {
+                    backupWasSuccessful = await CreateOnlineBackupAsync();
+                }
 
-            PerformBackupDirectoryMaintenance();
+                PerformBackupDirectoryMaintenance();
+            }
+            catch (Exception ex)
+            {
+                // Safety catch just in case
+                LogManager.LogError($"An error occurred during backup and backup maintenance.  Details are {ex.Message}");
+
+                backupWasSuccessful = false;
+            }
 
             return backupWasSuccessful;
         }
@@ -378,6 +371,13 @@ namespace MinecraftBdsManager.Managers
         {
             // Grab the root of the backup directory path to get information about its subdirectories
             DirectoryInfo backupDirectoryInfo = new(Settings.CurrentSettings.BackupSettings.BackupDirectoryPath);
+
+            // Check if the backup directory exists
+            if (!backupDirectoryInfo.Exists)
+            {
+                // No backups have been performed so we can just exit.
+                return;
+            }
 
             // Get information about each of the subdirectories.
             DirectoryInfo[] individualBackupInfos = backupDirectoryInfo.GetDirectories();
