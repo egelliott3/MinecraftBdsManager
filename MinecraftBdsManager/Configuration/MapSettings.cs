@@ -4,6 +4,8 @@
     {
         public bool EnableMapGeneration { get; set; } = false;
 
+        public bool OnlyGenerateMapsIfUsersWereOnline { get; set; } = true;
+
         public int MapGenerationIntervalInMinutes { get; set; } = 90;
 
         public string MapperExePath { get; set; } = string.Empty;

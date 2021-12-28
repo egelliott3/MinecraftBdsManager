@@ -59,6 +59,22 @@ namespace MinecraftBdsManager.Managers
                 return;
             }
 
+            // Check settings to see if the user wanted to do a backup only if players had been online
+            if (Settings.CurrentSettings.MapSettings.OnlyGenerateMapsIfUsersWereOnline)
+            {
+                // User entered backup interval
+                var mapIntervalTimespan = TimeSpan.FromMinutes(Settings.CurrentSettings.MapSettings.MapGenerationIntervalInMinutes);
+
+                var usersHaveBeenActiveOnTheServer = BdsManager.HaveUsersBeenOnInTheLastAmountOfTime(mapIntervalTimespan);
+
+                // If no one is currently active or been on then just return
+                if (!usersHaveBeenActiveOnTheServer)
+                {
+                    LogManager.LogInformation($"Skipping mapping operation(s) since there are no users have been active for over {mapIntervalTimespan.TotalMinutes} minutes.");
+                    return;
+                }
+            }
+
             if (string.IsNullOrWhiteSpace(Settings.CurrentSettings.MapSettings.MapperExePath))
             {
                 LogManager.LogWarning("Unable to generate maps since the MapperExePath is empty.  Please check settings.json.");
