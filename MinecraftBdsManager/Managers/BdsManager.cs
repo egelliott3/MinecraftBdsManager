@@ -10,6 +10,7 @@ namespace MinecraftBdsManager.Managers
         /// The executable name for BDS. This is the name as it ships and the user should not rename this.
         /// </summary>
         private const string BDS_EXECUTABLE_FILE_NAME = "bedrock_server.exe";
+        private static int _onlinePlayerCount = 0;
 
         static BdsManager()
         {
@@ -35,6 +36,21 @@ namespace MinecraftBdsManager.Managers
         /// The level name that was loaded by BDS.  For example: Bedrock level
         /// </summary>
         public static string LevelName { get; private set; } = string.Empty;
+
+        /// <summary>
+        /// Keeps track of the number of players who are online.  Whenever a user logs on this counter ++.  When one logs off this counter --.
+        /// </summary>
+        public static int OnlinePlayerCount
+        {
+            get
+            {
+                return _onlinePlayerCount;
+            }
+            private set
+            {
+                _onlinePlayerCount = value;
+            }
+        }
 
         /// <summary>
         /// Flag indicating if BDS is running or not
@@ -85,20 +101,24 @@ namespace MinecraftBdsManager.Managers
                 return usersHaveBeenActiveOnTheServer;
             }
 
+            // Before we bother checking time differences and such, just check to see if anyone is online based on our counter;
+            if (OnlinePlayerCount > 0)
+            {
+                return true;
+            }
+
             // Check the latest log on and off times to see if users are either currently active or have been active in the last backup interval
             if (latestUserConnectedTime > latestUserDisconnectionTime || (latestUserConnectedTime.HasValue && !latestUserDisconnectionTime.HasValue))
             {
                 // If a user has connected and not disconnected then we know they're active
-                usersHaveBeenActiveOnTheServer = true;
+                return true;
             }
             else
             {
                 // Check if the most recent log off was more that the backup interval ago.  Using local time here because the BDS log times are local.
                 //  That does mean DST can bite us here, however I'm not going out of my way for a 2x time a year event right now.
-                usersHaveBeenActiveOnTheServer = (DateTime.Now - latestUserDisconnectionTime!).Value < timeIntervalToCheckForActiveUsers;
+                return (DateTime.Now - latestUserDisconnectionTime!).Value < timeIntervalToCheckForActiveUsers;
             }
-
-            return usersHaveBeenActiveOnTheServer;
         }
 
         /// <summary>
@@ -184,12 +204,13 @@ namespace MinecraftBdsManager.Managers
                 string backupFileListCsv = monitoredLine[secondColonIndex..monitoredLine.Length].Trim();
 
 
-                foreach(var backupFile in backupFileListCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                foreach (var backupFile in backupFileListCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 {
                     var backupFileParts = backupFile.Split(':');
-                    BackupFiles.Add(new BackupManager.BackupFile() { 
-                        Path = Path.GetFullPath(Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, "worlds", backupFileParts[0])), 
-                        Length = long.Parse(backupFileParts[1]) 
+                    BackupFiles.Add(new BackupManager.BackupFile()
+                    {
+                        Path = Path.GetFullPath(Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, "worlds", backupFileParts[0])),
+                        Length = long.Parse(backupFileParts[1])
                     });
                 }
 
@@ -208,6 +229,7 @@ namespace MinecraftBdsManager.Managers
             if (monitoredLine.Contains("Player connected"))
             {
                 UserLastLoggedOnAt = LogMonitor.ReadDateTimeFromLogLine(monitoredLine);
+                Interlocked.Increment(ref _onlinePlayerCount);
                 return;
             }
 
@@ -215,6 +237,7 @@ namespace MinecraftBdsManager.Managers
             if (monitoredLine.Contains("Player disconnected"))
             {
                 UserLastLoggedOffAt = LogMonitor.ReadDateTimeFromLogLine(monitoredLine);
+                Interlocked.Decrement(ref _onlinePlayerCount);
                 return;
             }
 
