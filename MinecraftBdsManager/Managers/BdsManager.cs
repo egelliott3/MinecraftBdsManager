@@ -11,6 +11,8 @@ namespace MinecraftBdsManager.Managers
         /// </summary>
         private const string BDS_EXECUTABLE_FILE_NAME = "bedrock_server.exe";
         private static int _onlinePlayerCount = 0;
+        private static readonly object _backupFilesLock = new();
+
 
         static BdsManager()
         {
@@ -26,6 +28,11 @@ namespace MinecraftBdsManager.Managers
         /// The set of files to be backed up.  This field is empty except when BackupFilesAreReadToCopy is true
         /// </summary>
         public static List<BackupManager.BackupFile> BackupFiles { get; private set; } = new();
+
+        /// <summary>
+        /// Object that should be used for synchronization for tasks that access the BackupFiles property.
+        /// </summary>
+        public static object BackupFilesLock => _backupFilesLock;
 
         /// <summary>
         /// The version of BDS that is running.
@@ -199,19 +206,22 @@ namespace MinecraftBdsManager.Managers
             // MinecraftBdsManager Information: 0 : Bedrock level/db/000096.ldb:308603, Bedrock level/db/000102.ldb:491, Bedrock level/db/000105.ldb:491, Bedrock level/db/000106.log:0, Bedrock level/db/CURRENT:16, Bedrock level/db/MANIFEST-000104:216, Bedrock level/level.dat:2543, Bedrock level/level.dat_old:2543, Bedrock level/levelname.txt:13
             if (monitoredLine.Contains($"{LevelName}/db/CURRENT:"))
             {
-                var firstColonIndex = monitoredLine.IndexOf(':');
-                var secondColonIndex = monitoredLine.IndexOf(':', firstColonIndex + 1) + 1;
-                string backupFileListCsv = monitoredLine[secondColonIndex..monitoredLine.Length].Trim();
-
-
-                foreach (var backupFile in backupFileListCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                // Establish the lock while we are populating the collection to ensure that it is not accessed until we are done filling the list completely
+                lock (_backupFilesLock)
                 {
-                    var backupFileParts = backupFile.Split(':');
-                    BackupFiles.Add(new BackupManager.BackupFile()
+                    var firstColonIndex = monitoredLine.IndexOf(':');
+                    var secondColonIndex = monitoredLine.IndexOf(':', firstColonIndex + 1) + 1;
+                    string backupFileListCsv = monitoredLine[secondColonIndex..monitoredLine.Length].Trim();
+
+                    foreach (var backupFile in backupFileListCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                     {
-                        Path = Path.GetFullPath(Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, "worlds", backupFileParts[0])),
-                        Length = long.Parse(backupFileParts[1])
-                    });
+                        var backupFileParts = backupFile.Split(':');
+                        BackupFiles.Add(new BackupManager.BackupFile()
+                        {
+                            Path = Path.GetFullPath(Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, "worlds", backupFileParts[0])),
+                            Length = long.Parse(backupFileParts[1])
+                        });
+                    }
                 }
 
                 return;
