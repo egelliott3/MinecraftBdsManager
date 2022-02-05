@@ -272,8 +272,15 @@ namespace MinecraftBdsManager.Managers
                 //      c. Third step is to file copy the whole files from the world directory to the backup instance directory
                 var sourceDirectory = Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, BdsManager.WorldDirectoryPath!);
                 var backupDirectoryPath = BuildBackupDirectoryPath();
-                var backupFileSet = BdsManager.BackupFiles;
-                backupWasSuccessful = CopyFilesInBackupSet(backupDirectoryPath, backupFileSet);
+
+                List<BackupFile> backupFileSet;
+
+                // Establish a lock to ensure that the collection cannot be modified while we are enumerating it.
+                lock (BdsManager.BackupFilesLock)
+                {
+                    backupFileSet = BdsManager.BackupFiles;
+                    backupWasSuccessful = CopyFilesInBackupSet(backupDirectoryPath, backupFileSet);
+                }
 
                 if (!backupWasSuccessful)
                 {
