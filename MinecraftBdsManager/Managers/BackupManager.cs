@@ -36,7 +36,7 @@ namespace MinecraftBdsManager.Managers
             var backupWasSuccessful = await CreateBackupAsync();
             if (backupWasSuccessful)
             {
-                LogManager.LogInformation("Automatic back completed successfully.");
+                LogManager.LogInformation("Automatic backup completed successfully.");
             }
             else
             {

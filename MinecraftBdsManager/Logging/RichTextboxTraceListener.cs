@@ -73,18 +73,18 @@ namespace MinecraftBdsManager.Logging
         /// <param name="message">The message to write.</param>
         private void WriteSafe(string message)
         {
-            if (_listenerTarget.InvokeRequired)
+            if (_listenerTarget != null && _listenerTarget.InvokeRequired)
             {
                 void safeWrite() { WriteSafe(message); }
-                _listenerTarget.BeginInvoke(safeWrite);
+                _listenerTarget?.BeginInvoke(safeWrite);
             }
             else
             {
-                var defaultSelectionColor = _listenerTarget.SelectionColor;
+                var defaultSelectionColor = _listenerTarget?.SelectionColor;
 
                 FormatMessage(message);
 
-                _listenerTarget.AppendText(message);
+                _listenerTarget?.AppendText(message);
             }
         }
     }
