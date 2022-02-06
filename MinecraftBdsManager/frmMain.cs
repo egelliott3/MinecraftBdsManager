@@ -48,6 +48,20 @@ namespace MinecraftBdsManager
                 LogManager.LogInformation("Auto starting Bedrock Dedicated Server.");
                 toolBtnStart_Click(sender, e);
             }
+
+            // Check to see if we should enable auto restart.  These settings should apply even if the server has not started yet.
+            if (Settings.CurrentSettings.RestartSettings.EnableAutoRestart)
+            {
+                if (Settings.CurrentSettings.RestartSettings.EnableRestartOnInterval)
+                {
+                    RestartManager.EnableIntervalBasedRestart();
+                }
+
+                if (Settings.CurrentSettings.RestartSettings.EnableRestartOnSchedule)
+                {
+                    RestartManager.EnableScheduleBasedRestart();
+                }
+            }
         }
 
         private void rtbStatus_TextChanged(object sender, EventArgs e)
