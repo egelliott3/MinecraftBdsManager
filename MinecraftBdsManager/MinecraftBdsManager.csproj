@@ -6,9 +6,9 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <FileVersion>0.6</FileVersion>
+    <FileVersion>1.0</FileVersion>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
-    <AssemblyVersion>0.6</AssemblyVersion>
+    <AssemblyVersion>1.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
