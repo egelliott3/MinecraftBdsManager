@@ -90,7 +90,19 @@ namespace MinecraftBdsManager.Managers
             }
 
             // Compute the interval between now and the next scheduled restart time
-            var restartInterval = nextScheduledTime!.Value.ToTimeSpan() - now.TimeOfDay;
+            //  Be sure to handle the case if the nextScheduleTime is actually earlier than now
+            TimeSpan restartInterval;
+            var nextScheduleTimeTimeSpan = nextScheduledTime!.Value.ToTimeSpan();
+
+            if (nextScheduleTimeTimeSpan < now.TimeOfDay)
+            {
+                var nextScheduleTimeTomorrow = now.Date.AddDays(1).Add(nextScheduleTimeTimeSpan);
+                restartInterval = nextScheduleTimeTomorrow - now;
+            }
+            else
+            {
+                restartInterval = nextScheduleTimeTimeSpan - now.TimeOfDay;
+            }
 
             LogManager.LogInformation($"Next restart will occur in {restartInterval} at {nextScheduledTime}.");
 
