@@ -1,5 +1,4 @@
 ﻿using MinecraftBdsManager.Configuration;
-using MinecraftBdsManager.Logging;
 
 namespace MinecraftBdsManager.Managers
 {

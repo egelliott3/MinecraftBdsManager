@@ -1,5 +1,4 @@
 ﻿using MinecraftBdsManager.Configuration;
-using MinecraftBdsManager.Logging;
 using MinecraftBdsManager.Managers;
 
 namespace MinecraftBdsManager
@@ -48,20 +47,6 @@ namespace MinecraftBdsManager
                 LogManager.LogInformation("Auto starting Bedrock Dedicated Server.");
                 toolBtnStart_Click(sender, e);
             }
-
-            // Check to see if we should enable auto restart.  These settings should apply even if the server has not started yet.
-            if (Settings.CurrentSettings.RestartSettings.EnableAutoRestart)
-            {
-                if (Settings.CurrentSettings.RestartSettings.EnableRestartOnInterval)
-                {
-                    RestartManager.EnableIntervalBasedRestart();
-                }
-
-                if (Settings.CurrentSettings.RestartSettings.EnableRestartOnSchedule)
-                {
-                    RestartManager.EnableScheduleBasedRestart();
-                }
-            }
         }
 
         private void rtbStatus_TextChanged(object sender, EventArgs e)
@@ -105,27 +90,6 @@ namespace MinecraftBdsManager
                 rtbStatus.Clear();
             }
 
-            //  If the user has asked for log files, create a new log file per start
-            if (Settings.CurrentSettings.LoggingSettings.EnableLoggingToFile)
-            {
-                LogManager.RegisterFileLogger(Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath, unregisterExistingListener: true);
-            }
-
-            if (Settings.CurrentSettings.BackupSettings.BackupOnServerStart)
-            {
-                LogManager.LogInformation("Performing backup on start per user settings.");
-                var backupWasSuccessful = await BackupManager.CreateBackupAsync();
-
-                if (backupWasSuccessful)
-                {
-                    LogManager.LogInformation("Backup completed successfully");
-                }
-                else
-                {
-                    LogManager.LogError("Backup failed.");
-                }
-            }
-
             var success = await BdsManager.StartAsync();
 
             while (!BdsManager.ServerIsRunning)
@@ -136,18 +100,6 @@ namespace MinecraftBdsManager
             toolBtnStop.Enabled = success;
             toolBtnStart.Enabled = !success;
             _clearStatusBoxOnStart = true;
-
-            // Check if the user has requested to enable automatic backups.
-            if (Settings.CurrentSettings.BackupSettings.EnableAutomaticBackups)
-            {
-                BackupManager.EnableIntervalBasedBackups();
-            }
-
-            // Check if the user has requested to enable automatic map generation.
-            if (Settings.CurrentSettings.MapSettings.EnableMapGeneration)
-            {
-                MapManager.EnableIntervalBasedMapGeneration();
-            }
         }
 
         private async void toolBtnStop_Click(object sender, EventArgs e)
@@ -156,34 +108,7 @@ namespace MinecraftBdsManager
 
             await BdsManager.StopAsync();
 
-            while (BdsManager.ServerIsRunning)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(2));
-            }
-
             toolBtnStart.Enabled = true;
-
-            // Check if the user has requested to enable automatic backups.
-            if (Settings.CurrentSettings.BackupSettings.EnableAutomaticBackups)
-            {
-                BackupManager.DisableIntervalBasedBackups();
-            }
-
-            // Check if the user wanted a backup on stop and if so, take one
-            if (Settings.CurrentSettings.BackupSettings.BackupOnServerStop)
-            {
-                LogManager.LogInformation("Performing backup on stop per user settings.");
-                var backupWasSuccessful = await BackupManager.CreateBackupAsync();
-
-                if (backupWasSuccessful)
-                {
-                    LogManager.LogInformation("Backup completed successfully");
-                }
-                else
-                {
-                    LogManager.LogError("Backup failed.");
-                }
-            }
         }
 
         private void toolBtnViewLog_Click(object sender, EventArgs e)
