@@ -5,9 +5,13 @@ namespace MinecraftBdsManager.Managers
 {
     internal class RestartManager
     {
+        private static DateTime _restartIntervalDueTime = DateTime.MaxValue;
         private static System.Timers.Timer _restartIntervalTimer = new() { Enabled = false };
+        private static DateTime _restartScheduleDueTime = DateTime.MaxValue;
         private static System.Timers.Timer _restartScheduleTimer = new() { Enabled = false };
+        private static System.Timers.Timer _warnRestartTimer = new() { Enabled = false };
         private static readonly ConcurrentQueue<TimeOnly> _scheduledTimesQueue = new();
+        private static readonly string _intervalStringFormat = "hh\\:mm\\:ss";
 
         /// <summary>
         /// Creates, if needed, and starts the backup timer, enabling the interval based restarts
@@ -20,6 +24,10 @@ namespace MinecraftBdsManager.Managers
 
             // ... Interval on the timer is in milliseconds, so creating TimeSpan objects of both for easier comparison.
             var timerIntervalTimespan = TimeSpan.FromMilliseconds(_restartIntervalTimer.Interval);
+
+            _restartIntervalDueTime = DateTime.Now.AddMilliseconds(restartTimespan.TotalMilliseconds);
+
+            LogManager.LogInformation($"Next restart will occur in {restartTimespan.ToString(_intervalStringFormat)} at {_restartIntervalDueTime}.");
 
             // Check to see if the intervals match (if they match the result will be 0).  If they don't recreate the timer with the new interval.
             if (timerIntervalTimespan.CompareTo(restartTimespan) != 0)
@@ -38,6 +46,8 @@ namespace MinecraftBdsManager.Managers
             {
                 _restartIntervalTimer.Start();
             }
+
+            SetNextRestartWarningTime();
         }
 
         /// <summary>
@@ -104,7 +114,8 @@ namespace MinecraftBdsManager.Managers
                 restartInterval = nextScheduleTimeTimeSpan - now.TimeOfDay;
             }
 
-            LogManager.LogInformation($"Next restart will occur in {restartInterval} at {nextScheduledTime}.");
+            _restartScheduleDueTime = DateTime.Now.AddMilliseconds(restartInterval.TotalMilliseconds);
+            LogManager.LogInformation($"Next restart will occur in {restartInterval.ToString(_intervalStringFormat)} at {_restartScheduleDueTime}.");
 
             // Recreate the timer since the scheduled times may not have a consistent interval between values.
             //
@@ -121,6 +132,8 @@ namespace MinecraftBdsManager.Managers
             {
                 _restartScheduleTimer.Start();
             }
+
+            SetNextRestartWarningTime();
         }
 
         private static TimeOnly? GetNextScheduledTime()
@@ -167,6 +180,63 @@ namespace MinecraftBdsManager.Managers
             {
                 LogManager.LogError("Server interval restart failed.");
             }
+        }
+
+        private static void SetNextRestartWarningTime()
+        {
+            TimeSpan? restartWarningIntervalTimespan = null;
+            DateTime? warnDueTime = null;
+
+            if (_restartIntervalDueTime < _restartScheduleDueTime)
+            {
+                warnDueTime = _restartIntervalDueTime.AddMinutes(-5);
+            }
+
+            if (_restartScheduleDueTime != DateTime.MaxValue)
+            {
+                warnDueTime = _restartScheduleDueTime.AddMinutes(-5);
+            }
+
+            if (!warnDueTime.HasValue)
+            {
+                return;
+            }
+
+            restartWarningIntervalTimespan = warnDueTime - DateTime.Now;
+
+            if (!restartWarningIntervalTimespan.HasValue)
+            {
+                return;
+            }
+
+            LogManager.LogInformation($"Users will be warned of restart in {restartWarningIntervalTimespan.Value.ToString(_intervalStringFormat)} at {warnDueTime}.");
+
+            // Recreate the timer since the scheduled times may not have a consistent interval between values.
+            //
+            // The documentation on Timer has a bunch of screwy talk about how updating intervals after they've been set doing strange things like adding the remaining
+            //  old interval to the new one and such, so I'm just going to kill the Timer outright and make a new one from scratch each time the interval is change
+            //  to minimize the silliness.
+            _warnRestartTimer.Stop();
+            _warnRestartTimer.Dispose();
+
+            _warnRestartTimer = new(restartWarningIntervalTimespan.Value.TotalMilliseconds) { AutoReset = true };
+            _warnRestartTimer.Elapsed += WarnRestartTimer_Elapsed;
+
+            if (!_warnRestartTimer.Enabled)
+            {
+                _warnRestartTimer.Start();
+            }
+        }
+
+        private async static void WarnRestartTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            LogManager.LogInformation("Warning users of impending restart.");
+
+            //await BdsManager.SendCommandAsync("say §eServer will be restarting in approximately §c5 minutes!!");
+            await BdsManager.SendCommandAsync("say Server will be restarting in approximately 5 minutes!!");
+
+            _warnRestartTimer.Stop();
+            _warnRestartTimer.Dispose();
         }
 
         private async static Task<bool> RestartServerAsync()
