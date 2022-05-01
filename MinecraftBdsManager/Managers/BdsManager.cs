@@ -343,6 +343,28 @@ namespace MinecraftBdsManager.Managers
                 return false;
             }
 
+            //  If the user has asked for log files, create a new log file per start
+            if (Settings.CurrentSettings.LoggingSettings.EnableLoggingToFile)
+            {
+                LogManager.RegisterFileLogger(Settings.CurrentSettings.LoggingSettings.FileLoggingDirectoryPath, unregisterExistingListener: true);
+            }
+
+            // If the user has asked for backups to be taken on start, take one before we start the server.
+            if (Settings.CurrentSettings.BackupSettings.BackupOnServerStart)
+            {
+                LogManager.LogInformation("Performing backup on start per user settings.");
+                var backupWasSuccessful = await BackupManager.CreateBackupAsync();
+
+                if (backupWasSuccessful)
+                {
+                    LogManager.LogInformation("Backup completed successfully");
+                }
+                else
+                {
+                    LogManager.LogError("Backup failed.");
+                }
+            }
+
             bool newProcessStarted = ProcessManager.StartProcess(ProcessName.BedrockDedicatedServer, bdsExecutableFilePath, string.Empty);
 
             if (!newProcessStarted)
@@ -350,16 +372,64 @@ namespace MinecraftBdsManager.Managers
                 await SendCommandAsync("start");
             }
 
+            // Wait for the server to start
+            while (!BdsManager.ServerIsRunning)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+
+            // Check if the user has requested to enable automatic backups.
+            if (Settings.CurrentSettings.BackupSettings.EnableAutomaticBackups)
+            {
+                BackupManager.EnableIntervalBasedBackups();
+            }
+
+            // Check if the user has requested to enable automatic map generation.
+            if (Settings.CurrentSettings.MapSettings.EnableMapGeneration)
+            {
+                MapManager.EnableIntervalBasedMapGeneration();
+            }
+
             return true;
         }
 
         /// <summary>
-        /// Stops the Bendrock Server instance
+        /// Stops the Bedrock Server instance and checks to see if a backup should be done after server is done stopping.
         /// </summary>
         /// <returns>Handle to the async promise</returns>
         internal async static Task StopAsync()
         {
+            // Send the stop command
             await SendCommandAsync("stop");
+
+            // Wait until the server is fully stopped.
+            while (BdsManager.ServerIsRunning)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+
+            // Since the server is stopping we want to disable interval based backups, if they are enabled.
+            //  Check if the user has requested to enable automatic backups, and if so, disable them while the server is shut down.
+            if (Settings.CurrentSettings.BackupSettings.EnableAutomaticBackups)
+            {
+                BackupManager.DisableIntervalBasedBackups();
+            }
+
+            // Check if the user wanted a backup on stop and if so, take one
+            if (Settings.CurrentSettings.BackupSettings.BackupOnServerStop)
+            {
+                LogManager.LogInformation("Performing backup on stop per user settings.");
+                var backupWasSuccessful = await BackupManager.CreateBackupAsync();
+
+                if (backupWasSuccessful)
+                {
+                    LogManager.LogInformation("Backup completed successfully");
+                }
+                else
+                {
+                    LogManager.LogError("Backup failed.");
+                }
+            }
         }
     }
 }
