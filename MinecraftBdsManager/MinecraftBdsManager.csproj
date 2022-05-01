@@ -10,6 +10,7 @@
     <ApplicationIcon>favicon.ico</ApplicationIcon>
     <AssemblyVersion>1.2.0</AssemblyVersion>
     <Version>1.2.0</Version>
+    <PublishSingleFile>true</PublishSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
