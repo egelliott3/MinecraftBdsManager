@@ -1,6 +1,5 @@
 ﻿using MinecraftBdsManager.Configuration;
 using MinecraftBdsManager.Logging;
-using System.Diagnostics;
 
 namespace MinecraftBdsManager.Managers
 {
@@ -388,6 +387,17 @@ namespace MinecraftBdsManager.Managers
             if (Settings.CurrentSettings.MapSettings.EnableMapGeneration)
             {
                 MapManager.EnableIntervalBasedMapGeneration();
+            }
+
+            // Check to see if we should enable auto restart.  These settings should apply even if the server has not started yet.
+            if (Settings.CurrentSettings.RestartSettings.EnableRestartOnInterval)
+            {
+                RestartManager.EnableIntervalBasedRestart();
+            }
+
+            if (Settings.CurrentSettings.RestartSettings.EnableRestartOnSchedule)
+            {
+                RestartManager.EnableScheduleBasedRestart();
             }
 
             return true;

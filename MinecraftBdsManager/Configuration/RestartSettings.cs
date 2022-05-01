@@ -2,12 +2,6 @@
 {
     internal class RestartSettings
     {
-
-        /// <summary>
-        /// True or false setting on whether or not the app should restart automatically if it closes unexpectedly.
-        /// </summary>
-        public bool EnableAutoRestart { get; set; } = true;
-
         public bool EnableRestartOnInterval { get; set; } = false;
 
         public int RestartIntervalInMinutes { get; set; } = 360;
