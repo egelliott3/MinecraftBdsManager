@@ -72,6 +72,7 @@
             this.toolBtnSettings.Size = new System.Drawing.Size(34, 28);
             this.toolBtnSettings.Text = "toolStripButton1";
             this.toolBtnSettings.ToolTipText = "Minecraft BDS Manager Settings";
+            this.toolBtnSettings.Click += new System.EventHandler(this.toolBtnSettings_Click);
             // 
             // toolBtnStart
             // 

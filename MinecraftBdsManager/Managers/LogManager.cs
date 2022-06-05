@@ -95,11 +95,10 @@ namespace MinecraftBdsManager.Managers
 
         public static void RegisterUILogger(RichTextBox richTextBox, string listenerName = "RichTextBoxLogger", bool unregisterExistingListener = false)
         {
-            if (Trace.Listeners[listenerName] != null || unregisterExistingListener)
+            if (unregisterExistingListener)
             {
-                Trace.Listeners.Remove(listenerName);
+                UnregisterUILogger(richTextBox, listenerName);
             }
-
 
             if (Trace.Listeners[listenerName] == null)
             {
@@ -127,6 +126,14 @@ namespace MinecraftBdsManager.Managers
                 {
                     logInfo.Delete();
                 }
+            }
+        }
+
+        public static void UnregisterUILogger(RichTextBox richTextBox, string listenerName = "RichTextBoxLogger")
+        {
+            if (Trace.Listeners[listenerName] != null)
+            {
+                Trace.Listeners.Remove(listenerName);
             }
         }
     }

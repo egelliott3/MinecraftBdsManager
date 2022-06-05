@@ -1,5 +1,6 @@
 ﻿using MinecraftBdsManager.Configuration;
 using MinecraftBdsManager.Managers;
+using System.Reflection;
 
 namespace MinecraftBdsManager
 {
@@ -30,6 +31,10 @@ namespace MinecraftBdsManager
 
         private void frmMain_Load(object sender, EventArgs e)
         {
+            // Get version number so we can show it in the title.
+            Version version = Assembly.GetExecutingAssembly().GetName().Version!;
+            this.Text = String.Concat(this.Text, $" {version.Major}.{version.Minor}.{version.Build}");
+
             // Get those settings so we know how to handle things
             _ = Settings.LoadSettings();
 
@@ -120,6 +125,12 @@ namespace MinecraftBdsManager
             }
 
             ProcessManager.StartProcess(ProcessName.FireAndForget, "explorer.exe", LogManager.CurrentLogFilePath);
+        }
+
+        private void toolBtnSettings_Click(object sender, EventArgs e)
+        {
+            var frmSettings = new frmSettings();
+            frmSettings.ShowDialog();
         }
     }
 }
