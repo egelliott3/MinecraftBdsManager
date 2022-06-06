@@ -37,6 +37,7 @@
             this.toolBtnOpenLogsFolder = new System.Windows.Forms.ToolStripButton();
             this.toolBtnOpenSavesFolder = new System.Windows.Forms.ToolStripButton();
             this.toolBtnBackupNow = new System.Windows.Forms.ToolStripButton();
+            this.toolBtnMapNow = new System.Windows.Forms.ToolStripButton();
             this.txtCustomCommand = new System.Windows.Forms.TextBox();
             this.btnIssueCommand = new System.Windows.Forms.Button();
             this.lblStatusBox = new System.Windows.Forms.Label();
@@ -56,7 +57,8 @@
             this.toolBtnViewLog,
             this.toolBtnOpenLogsFolder,
             this.toolBtnOpenSavesFolder,
-            this.toolBtnBackupNow});
+            this.toolBtnBackupNow,
+            this.toolBtnMapNow});
             this.toolBarMain.Location = new System.Drawing.Point(0, 0);
             this.toolBarMain.Name = "toolBarMain";
             this.toolBarMain.Padding = new System.Windows.Forms.Padding(0, 7, 3, 0);
@@ -139,6 +141,17 @@
             this.toolBtnBackupNow.Text = "toolStripButton1";
             this.toolBtnBackupNow.ToolTipText = "Create a backup now";
             this.toolBtnBackupNow.Click += new System.EventHandler(this.toolBtnBackupNow_Click);
+            // 
+            // toolBtnMapNow
+            // 
+            this.toolBtnMapNow.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.toolBtnMapNow.Image = global::MinecraftBdsManager.Properties.Resources.photo_scenery;
+            this.toolBtnMapNow.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolBtnMapNow.Name = "toolBtnMapNow";
+            this.toolBtnMapNow.Size = new System.Drawing.Size(34, 28);
+            this.toolBtnMapNow.Text = "toolStripButton2";
+            this.toolBtnMapNow.ToolTipText = "Create a new map";
+            this.toolBtnMapNow.Click += new System.EventHandler(this.toolBtnMapNow_Click);
             // 
             // txtCustomCommand
             // 
@@ -239,5 +252,6 @@
         private ToolStripButton toolBtnSettings;
         private ToolStripButton toolStripButton1;
         private RichTextBox rtbStatus;
+        private ToolStripButton toolBtnMapNow;
     }
 }

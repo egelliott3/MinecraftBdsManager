@@ -48,19 +48,23 @@ namespace MinecraftBdsManager.Managers
             }
         }
 
-        private async static void MapTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        /// <summary>
+        /// Generates a new map on demand.  If mapping process is already running this call will simply return after logging.
+        /// </summary>
+        /// <returns>A boolean value to indicate if mapping was completed.  True if completed, otherwise false.</returns>
+        internal async static Task<bool> GenerateMap(bool skipOnlineUserCheck = false)
         {
             // Check to see if the mapping process is still running.  If the world is big, and the mapping interval is small, the process can still be running
-            if (ProcessManager.TrackedProcesses.ContainsKey(ProcessName.Mapping) 
-                && ProcessManager.TrackedProcesses[ProcessName.Mapping] != null 
+            if (ProcessManager.TrackedProcesses.ContainsKey(ProcessName.Mapping)
+                && ProcessManager.TrackedProcesses[ProcessName.Mapping] != null
                 && !ProcessManager.TrackedProcesses[ProcessName.Mapping]!.HasExited
                 && !_mapGenerationCompleted)
             {
-                return;
+                return false;
             }
 
             // Check settings to see if the user wanted to do a backup only if players had been online
-            if (Settings.CurrentSettings.MapSettings.OnlyGenerateMapsIfUsersWereOnline)
+            if (Settings.CurrentSettings.MapSettings.OnlyGenerateMapsIfUsersWereOnline && !skipOnlineUserCheck)
             {
                 // User entered backup interval
                 var mapIntervalTimespan = TimeSpan.FromMinutes(Settings.CurrentSettings.MapSettings.MapGenerationIntervalInMinutes);
@@ -71,14 +75,14 @@ namespace MinecraftBdsManager.Managers
                 if (!usersHaveBeenActiveOnTheServer)
                 {
                     LogManager.LogInformation($"Skipping mapping operation(s) since there are no users have been active for over {mapIntervalTimespan.TotalMinutes} minutes.");
-                    return;
+                    return false;
                 }
             }
 
             if (string.IsNullOrWhiteSpace(Settings.CurrentSettings.MapSettings.MapperExePath))
             {
                 LogManager.LogWarning("Unable to generate maps since the MapperExePath is empty.  Please check settings.json.");
-                return;
+                return false;
             }
 
             _mapGenerationCompleted = false;
@@ -98,9 +102,9 @@ namespace MinecraftBdsManager.Managers
             // Clean out the existing temp dir if it exists...
             if (Directory.Exists(mapTempDirectoryPath))
             {
-                Directory.Delete(mapTempDirectoryPath, recursive:true);
+                Directory.Delete(mapTempDirectoryPath, recursive: true);
             }
-             
+
             // ... then be sure it exists again
             Directory.CreateDirectory(mapTempDirectoryPath);
             Directory.CreateDirectory(Path.Combine(mapTempDirectoryPath, "db"));
@@ -109,9 +113,9 @@ namespace MinecraftBdsManager.Managers
             {
                 // Copy the world files to this temp directory via backup manager since it already has the ability to do this
                 var worldFilesDirectoryPath = Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, BdsManager.WorldDirectoryPath!);
-                var copyWasSuccessful = BackupManager.CopyDirectoryContents(worldFilesDirectoryPath, mapTempDirectoryPath);
+                var backupResult = BackupManager.CopyDirectoryContents(worldFilesDirectoryPath, mapTempDirectoryPath);
 
-                if (!copyWasSuccessful)
+                if (!backupResult.WasSuccessful)
                 {
                     throw new Exception("Unable to copy files to temp directory. Please see previous errors for more information.");
                 }
@@ -155,6 +159,13 @@ namespace MinecraftBdsManager.Managers
 
                 _mapGenerationCompleted = true;
             }
+
+            return _mapGenerationCompleted;
+        }
+
+        private async static void MapTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            await GenerateMap();
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using MinecraftBdsManager.Configuration;
 using MinecraftBdsManager.Managers;
+using System.Reflection;
 
 namespace MinecraftBdsManager
 {
@@ -30,6 +31,10 @@ namespace MinecraftBdsManager
 
         private void frmMain_Load(object sender, EventArgs e)
         {
+            // Get version number so we can show it in the title.
+            Version version = Assembly.GetExecutingAssembly().GetName().Version!;
+            this.Text = String.Concat(this.Text, $" {version.Major}.{version.Minor}.{version.Build}");
+
             // Get those settings so we know how to handle things
             _ = Settings.LoadSettings();
 
@@ -59,15 +64,31 @@ namespace MinecraftBdsManager
         {
             LogManager.LogInformation("Starting backup...");
 
-            var backupWasSuccessful = await BackupManager.CreateBackupAsync();
+            var backupResult = await BackupManager.CreateBackupAsync();
 
-            if (backupWasSuccessful)
+            if (backupResult.WasSuccessful)
             {
                 LogManager.LogInformation("Backup completed successfully");
             }
             else
             {
                 LogManager.LogError("Backup failed.");
+            }
+        }
+
+        private async void toolBtnMapNow_Click(object sender, EventArgs e)
+        {
+            LogManager.LogInformation("Starting mapping process...");
+
+            var mappingWasSuccessful = await MapManager.GenerateMap(skipOnlineUserCheck: true);
+
+            if (mappingWasSuccessful)
+            {
+                LogManager.LogInformation("Mapping process completed successfully");
+            }
+            else
+            {
+                LogManager.LogError("Mapping process failed.");
             }
         }
 

@@ -1,4 +1,6 @@
-﻿using MinecraftBdsManager.Configuration;
+﻿using Azure.Storage.Blobs;
+using MinecraftBdsManager.Configuration;
+using System.IO.Compression;
 
 namespace MinecraftBdsManager.Managers
 {
@@ -32,8 +34,8 @@ namespace MinecraftBdsManager.Managers
 
             LogManager.LogInformation("Automatic backup is starting.");
 
-            var backupWasSuccessful = await CreateBackupAsync();
-            if (backupWasSuccessful)
+            var backupResult = await CreateBackupAsync();
+            if (backupResult.WasSuccessful)
             {
                 LogManager.LogInformation("Automatic backup completed successfully.");
             }
@@ -90,25 +92,88 @@ namespace MinecraftBdsManager.Managers
         }
 
         /// <summary>
+        /// Copies files from the local backup directory path to the designated cloud storage location
+        /// </summary>
+        /// <param name="backupDirectoryPath">Directory path where the backup files to upload to cloud storage are located.</param>
+        /// <returns>Handle to the async promise with a flag result indicating success.  True means the backup was successful.  False means it failed. </returns>
+        internal async static Task<bool> CopyToCloudStorage(string backupDirectoryPath)
+        {
+            var targetZipFilePath = Path.Combine(Path.GetFullPath(Path.Combine(backupDirectoryPath, "..\\")), $"{Path.GetFileName(backupDirectoryPath)}.zip");
+
+            try
+            {
+                // Zip the backup directory
+                ZipFile.CreateFromDirectory(backupDirectoryPath, targetZipFilePath);
+
+                // Upload it to the appropriate location
+                switch (Settings.CurrentSettings.BackupSettings.CloudBackupType)
+                {
+                    case BackupSettings.CloudType.AmazonS3:
+                        return await CopyToAmazonS3(targetZipFilePath);
+
+                    case BackupSettings.CloudType.AzureBlob:
+                        return await CopyToAzureBlob(targetZipFilePath);
+
+                    case BackupSettings.CloudType.None:
+                    default:
+                        return false;
+                }
+            }
+            catch(Exception ex)
+            {
+                LogManager.LogError($"An error occurred during cloud upload.  Details are {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (File.Exists(targetZipFilePath))
+                {
+                    File.Delete(targetZipFilePath);
+                }
+            }
+        }
+
+        private async static Task<bool> CopyToAmazonS3(string fileToUploadPath)
+        {
+            return await Task.FromResult(false);
+        }
+
+        private async static Task<bool> CopyToAzureBlob(string fileToUploadPath)
+        {
+            var serviceClient = new BlobServiceClient(Settings.CurrentSettings.BackupSettings.CloudBackupConnectionString);
+            var containerClient = serviceClient.GetBlobContainerClient("minecraftbdsmanager");
+
+            await containerClient.CreateIfNotExistsAsync();
+
+            var blobClient = containerClient.GetBlobClient(Path.GetFileName(fileToUploadPath));
+
+            await blobClient.UploadAsync(fileToUploadPath);
+
+            return true;
+        }
+
+        /// <summary>
         /// Copies everything in the source directory, including subfolders, to the target directory
         /// </summary>
         /// <param name="sourceDirectoryPath">Source location for files to be copied.</param>
         /// <param name="targetDirectoryPath">Target directory where files should be copied to.</param>
-        /// <returns>A flag indicating if the copy was successful (true) or not (false).</returns>
-        internal static bool CopyDirectoryContents(string sourceDirectoryPath, string targetDirectoryPath)
+        /// <returns>A BackupResult object that includes a WasSuccessful flag and the target directory where the backup was written.</returns>
+        internal static BackupResult CopyDirectoryContents(string sourceDirectoryPath, string targetDirectoryPath)
         {
+            BackupResult backupResult = new() { WasSuccessful = false };
+
             // If the source directory was not passed in properly and/or the directory is missing then log and exit.
             if (string.IsNullOrWhiteSpace(sourceDirectoryPath) || !Directory.Exists(sourceDirectoryPath))
             {
                 LogManager.LogWarning($"Unable to copy files as source path {sourceDirectoryPath} cannot be found.");
-                return false;
+                return backupResult;
             }
 
             // If the target directory was not passed in properly then log and exit.
             if (string.IsNullOrWhiteSpace(targetDirectoryPath))
             {
                 LogManager.LogWarning($"Unable to copy files as target path {targetDirectoryPath} cannot be found.");
-                return false;
+                return backupResult;
             }
 
             // Ensure paths are expanded
@@ -124,11 +189,12 @@ namespace MinecraftBdsManager.Managers
             if (Directory.GetFiles(targetDirectoryPath, "*.*", SearchOption.AllDirectories).Length > 0)
             {
                 LogManager.LogWarning($"Target directory {targetDirectoryPath} is not empty. Aborting backup.");
-                return false;
+                return backupResult;
             }
 
             // Find all of the source files recursively
             var sourceFilePaths = Directory.GetFiles(sourceDirectoryPath, "*.*", SearchOption.AllDirectories);
+            backupResult.BackupDirectoryPath = targetDirectoryPath;
 
             // Copy the files to the target directory
             foreach (var sourceFilePath in sourceFilePaths)
@@ -144,11 +210,12 @@ namespace MinecraftBdsManager.Managers
                 catch (Exception ex)
                 {
                     LogManager.LogError($"Files were unable to be copied due to {ex.Message}.");
-                    return false;
+                    return backupResult;
                 }
             }
 
-            return true;
+            backupResult.WasSuccessful = true;
+            return backupResult;
         }
 
         /// <summary>
@@ -194,10 +261,10 @@ namespace MinecraftBdsManager.Managers
         /// <summary>
         /// Creates a backup of the Minecraft world.  Backups can be taken either as Offline (the server is stopped) or Online (the server is running)
         /// </summary>
-        /// <returns>Handle to the async promise and a flag indicating if the backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
-        internal async static Task<bool> CreateBackupAsync()
+        /// <returns>Handle to the async promise and a BackupResult with details from the backup.</returns>
+        internal async static Task<BackupResult> CreateBackupAsync()
         {
-            bool backupWasSuccessful;
+            BackupResult backupResult = new();
 
             try
             {
@@ -205,11 +272,16 @@ namespace MinecraftBdsManager.Managers
                 //
                 if (!BdsManager.ServerIsRunning)
                 {
-                    backupWasSuccessful = CreateOfflineBackup();
+                    backupResult = CreateOfflineBackup();
                 }
                 else
                 {
-                    backupWasSuccessful = await CreateOnlineBackupAsync();
+                    backupResult = await CreateOnlineBackupAsync();
+                }
+
+                if (Settings.CurrentSettings.BackupSettings.CloudBackupType != BackupSettings.CloudType.None)
+                {
+                    await CopyToCloudStorage(backupResult.BackupDirectoryPath);
                 }
 
                 PerformBackupDirectoryMaintenance();
@@ -219,17 +291,17 @@ namespace MinecraftBdsManager.Managers
                 // Safety catch just in case
                 LogManager.LogError($"An error occurred during backup and backup maintenance.  Details are {ex.Message}");
 
-                backupWasSuccessful = false;
+                backupResult.WasSuccessful = false;
             }
 
-            return backupWasSuccessful;
+            return backupResult;
         }
 
         /// <summary>
         /// Creates a backup when the server is not running.  This is a straight forward file copy as we know the world state is not changing.
         /// </summary>
-        /// <returns>Flag indicating if the offline backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
-        private static bool CreateOfflineBackup()
+        /// <returns>A BackupResult object that includes a WasSuccessful flag and the target directory where the backup was written.</returns>
+        private static BackupResult CreateOfflineBackup()
         {
             //  1. If the server is offline/stopped we can simply copy out the world files as they are static since the world is not actively being hosted.
             var sourceDirectory = Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, BdsManager.WorldDirectoryPath!);
@@ -239,10 +311,10 @@ namespace MinecraftBdsManager.Managers
         /// <summary>
         /// Creates a backup when the server is running.  This backup is a more involved process as it requires working with BDS to know the correct files and sizes of those files that need to be saved.
         /// </summary>
-        /// <returns>Handle to the async promise and a flag indicating if the backup was successful or not.  True means the backup was successful.  False means it failed.</returns>
-        private async static Task<bool> CreateOnlineBackupAsync()
+        /// <returns>Handle to the async promise and a BackupResult object that includes a WasSuccessful flag and the target directory where the backup was written.</returns>
+        private async static Task<BackupResult> CreateOnlineBackupAsync()
         {
-            bool backupWasSuccessful = false;
+            BackupResult backupResult = new();
 
             //  2. If the server is online then a specific process needs to be followed in order to ensure we have uncorrupted backups.
             try
@@ -265,39 +337,45 @@ namespace MinecraftBdsManager.Managers
                 if (!BdsManager.ServerIsRunning)
                 {
                     LogManager.LogWarning("Terminating Online backup due to server shutdown.");
-                    return false;
+                    backupResult.WasSuccessful = false;
+
+                    return backupResult;
                 }
 
                 //      c. Third step is to file copy the whole files from the world directory to the backup instance directory
                 var sourceDirectory = Path.Combine(Settings.CurrentSettings.BedrockDedicateServerDirectoryPath, BdsManager.WorldDirectoryPath!);
-                var backupDirectoryPath = BuildBackupDirectoryPath();
+                backupResult.BackupDirectoryPath = BuildBackupDirectoryPath();
 
                 List<BackupFile> backupFileSet;
 
                 // Establish a lock to ensure that the collection cannot be modified while we are enumerating it.
                 lock (BdsManager.BackupFilesLock)
                 {
-                    backupFileSet = BdsManager.BackupFiles;
-                    backupWasSuccessful = CopyFilesInBackupSet(backupDirectoryPath, backupFileSet);
+                    // Cloning the BackupFiles set here to avoid a race condition where BdsManager.BackupFiles can be cleared before the backup process fully finishes
+                    backupFileSet = new List<BackupFile>(BdsManager.BackupFiles);
+                    backupResult.WasSuccessful = CopyFilesInBackupSet(backupResult.BackupDirectoryPath, backupFileSet);
                 }
 
-                if (!backupWasSuccessful)
+                if (!backupResult.WasSuccessful)
                 {
-                    return backupWasSuccessful;
+                    return backupResult;
                 }
 
                 //      d. Fourth step is to call "save resume" on BDS to let the server know that we're done copying files and it can go about it's normal business
                 await BdsManager.SaveResumeAsync();
 
+                // Adding a delay to try and further avoid the "collection modified" error from the list of backup files.
+                await Task.Delay(TimeSpan.FromMilliseconds(1500));
+
                 //      e. Fifth and final step is to truncate the files that are in the backup instance directory to the sizes specified from the successful "save query" result.
                 //          I. This should be done by writing the appropriate byte count of each file to a temp copy of that same file, deleting the backed up version and replacing it with the temp version.
                 //              This will avoid us getting in our own way when doing the file truncation and ensure we have a clean set of files at the end.
-                backupWasSuccessful = TrimBackupFiles(backupDirectoryPath, backupFileSet);
+                backupResult.WasSuccessful = TrimBackupFiles(backupResult.BackupDirectoryPath, backupFileSet);
             }
             catch (Exception ex)
             {
                 LogManager.LogError($"Backup was not successful.  The error encountered was {ex}.");
-                backupWasSuccessful = false;
+                backupResult.WasSuccessful = false;
             }
             finally
             {
@@ -310,7 +388,7 @@ namespace MinecraftBdsManager.Managers
                 }
             }
 
-            return backupWasSuccessful;
+            return backupResult;
         }
 
         /// <summary>
@@ -473,13 +551,6 @@ namespace MinecraftBdsManager.Managers
                     return false;
                 }
 
-                // Check to be sure we have a length that makes sense. No file should be smaller than one byte.
-                if (backupFile.Length < 1)
-                {
-                    LogManager.LogError($"Backup file {backedupFilePath} has an invalid length from BDS of {backupFile.Length}.  Backup was not successful.");
-                    return false;
-                }
-
                 // Check to be sure that the length specified from BDS is actually shorter, or equal to, the length of the backup file.  If not, we have an issue.
                 if (backupFile.Length > new FileInfo(backedupFilePath).Length)
                 {
@@ -506,6 +577,16 @@ namespace MinecraftBdsManager.Managers
             public string Path { get; set; } = string.Empty;
 
             public long Length { get; set; } = 0;
+        }
+
+        /// <summary>
+        /// Contains metadata about the result from the backup including a success flag and path where the backup was written to.
+        /// </summary>
+        public class BackupResult
+        {
+            public string BackupDirectoryPath { get; set; } = string.Empty;
+
+            public bool WasSuccessful { get; set; } = false;
         }
     }
 }
