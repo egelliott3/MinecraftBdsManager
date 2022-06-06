@@ -352,9 +352,9 @@ namespace MinecraftBdsManager.Managers
             if (Settings.CurrentSettings.BackupSettings.BackupOnServerStart)
             {
                 LogManager.LogInformation("Performing backup on start per user settings.");
-                var backupWasSuccessful = await BackupManager.CreateBackupAsync();
+                var backupResult = await BackupManager.CreateBackupAsync();
 
-                if (backupWasSuccessful)
+                if (backupResult.WasSuccessful)
                 {
                     LogManager.LogInformation("Backup completed successfully");
                 }
@@ -429,9 +429,9 @@ namespace MinecraftBdsManager.Managers
             if (Settings.CurrentSettings.BackupSettings.BackupOnServerStop)
             {
                 LogManager.LogInformation("Performing backup on stop per user settings.");
-                var backupWasSuccessful = await BackupManager.CreateBackupAsync();
+                var backupResult = await BackupManager.CreateBackupAsync();
 
-                if (backupWasSuccessful)
+                if (backupResult.WasSuccessful)
                 {
                     LogManager.LogInformation("Backup completed successfully");
                 }
