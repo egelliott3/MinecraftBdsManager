@@ -69,8 +69,18 @@ namespace MinecraftBdsManager.Managers
             // Pull out just the date part to allow us to easily check if we have a Daily backup folder yet today
             var shortDateFormCurrentUtcDateTime = formattedCurrentUtcDateTime[0..formattedCurrentUtcDateTime.IndexOf("T")];
 
+            // Create backup root path if not exists
+            if (!Directory.Exists(backupDirectoryPathRoot))
+            {
+                Directory.CreateDirectory(backupDirectoryPathRoot);
+
+                // The backup directory will need a db folder as well.
+                Directory.CreateDirectory(Path.Combine(backupDirectoryPathRoot, "db"));
+            }
+
             // Check to see if we have existing directories from "today"
-            if (!Directory.GetDirectories(backupDirectoryPathRoot, $"*{shortDateFormCurrentUtcDateTime}*").Any())
+            if (!Directory.GetDirectories(backupDirectoryPathRoot, $"*{shortDateFormCurrentUtcDateTime}*").Any()
+                && !Directory.GetFiles(backupDirectoryPathRoot, $"*{shortDateFormCurrentUtcDateTime}*.zip").Any())
             {
                 // Append the daily prefix
                 backupDirectoryName = string.Concat(DAILY_BACKUP_DIRECTORY_NAME_PREFIX, backupDirectoryName);
@@ -265,6 +275,7 @@ namespace MinecraftBdsManager.Managers
         internal async static Task<BackupResult> CreateBackupAsync()
         {
             BackupResult backupResult = new();
+            string? compressedArchiveFilePath = null;
 
             try
             {
@@ -279,9 +290,23 @@ namespace MinecraftBdsManager.Managers
                     backupResult = await CreateOnlineBackupAsync();
                 }
 
+                // See if the user asked to have the backup folder compressed to a ZIP archive.
+                if (Settings.CurrentSettings.BackupSettings.CompressToArchiveFile)
+                {
+                    compressedArchiveFilePath = CreateCompressedArchive(backupResult.BackupDirectoryPath);
+                }
+
+                // See if the user wanted the backup file(s) uploaded to cloud storage.
                 if (Settings.CurrentSettings.BackupSettings.CloudBackupType != BackupSettings.CloudType.None)
                 {
-                    await CopyToCloudStorage(backupResult.BackupDirectoryPath);
+                    if (string.IsNullOrWhiteSpace(compressedArchiveFilePath))
+                    {
+                        await CopyToCloudStorage(backupResult.BackupDirectoryPath);
+                    }
+                    else
+                    {
+                        await CopyToCloudStorage(compressedArchiveFilePath);
+                    }
                 }
 
                 PerformBackupDirectoryMaintenance();
@@ -295,6 +320,25 @@ namespace MinecraftBdsManager.Managers
             }
 
             return backupResult;
+        }
+
+        /// <summary>
+        /// Creates a compressed archive from the specified path.  Creating a compressed archive will remove the original files/folder
+        /// </summary>
+        /// <param name="path">Path of the file/directory to compresse into an archive.</param>
+        /// <returns>The filepath to the compressed archive.  Filename will be the directory name from the supplied path.</returns>
+        private static string CreateCompressedArchive(string path)
+        {
+            var targetArchiveFileName = Path.GetFileName(path);
+            var targetArchiveDirectoryPath = Path.GetFullPath(Path.Combine(path, "..\\"));
+            var targetArchiveFilePath = Path.Combine(targetArchiveDirectoryPath, $"{targetArchiveFileName!}.zip");
+
+            ZipFile.CreateFromDirectory(path, targetArchiveFilePath);
+
+            Directory.Delete(path, recursive: true);
+
+            return targetArchiveFilePath;
+
         }
 
         /// <summary>
@@ -463,9 +507,6 @@ namespace MinecraftBdsManager.Managers
                 return;
             }
 
-            // Get information about each of the subdirectories.
-            DirectoryInfo[] individualBackupInfos = backupDirectoryInfo.GetDirectories();
-
             // Snapshot the "now" time to ensure we get the same calculations each time we use it
             DateTime now = DateTime.Now;
 
@@ -480,6 +521,19 @@ namespace MinecraftBdsManager.Managers
                 Settings.CurrentSettings.BackupSettings.KeepDailyBackupsForNumberOfDays == 0
                 ? DateTime.MaxValue
                 : now.AddDays(-Settings.CurrentSettings.BackupSettings.KeepDailyBackupsForNumberOfDays);
+
+            // Cleanup backups using the directory pattern
+            PerformBackupDirectoryMaintenanceOnDirectories(backupDirectoryInfo, dailyBackupDeleteDateThreshold, normalBackupDeleteDateThreshold);
+
+            // Cleanup backups using the compressed file archive pattern
+            PerformBackupDirectoryMaintenanceOnArchiveFiles(backupDirectoryInfo, dailyBackupDeleteDateThreshold, normalBackupDeleteDateThreshold);
+        }
+
+        private static void PerformBackupDirectoryMaintenanceOnDirectories(DirectoryInfo backupDirectoryInfo, 
+            DateTime dailyBackupDeleteDateThreshold, DateTime normalBackupDeleteDateThreshold)
+        {
+            // Get information about each of the subdirectories.
+            DirectoryInfo[] individualBackupInfos = backupDirectoryInfo.GetDirectories();
 
             // Go through each directory and see if it should be kept or not.
             foreach (DirectoryInfo directoryInfo in individualBackupInfos)
@@ -509,6 +563,49 @@ namespace MinecraftBdsManager.Managers
                     try
                     {
                         directoryInfo.Delete(recursive: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.LogError($"There was a problem cleaning up daily backups. The error was {ex}.");
+                    }
+                }
+            }
+        }
+
+        private static void PerformBackupDirectoryMaintenanceOnArchiveFiles(DirectoryInfo backupDirectoryInfo,
+            DateTime dailyBackupDeleteDateThreshold, DateTime normalBackupDeleteDateThreshold)
+        {
+            // Get information about each of the zip archive files.
+            FileInfo[] individualBackupInfos = backupDirectoryInfo.GetFiles("*.zip");
+
+            // Go through each directory and see if it should be kept or not.
+            foreach (FileInfo fileInfo in individualBackupInfos)
+            {
+                // Check if this is a daily directory
+                if (fileInfo.Name.StartsWith(DAILY_BACKUP_DIRECTORY_NAME_PREFIX))
+                {
+                    if (fileInfo.CreationTime < dailyBackupDeleteDateThreshold)
+                    {
+                        try
+                        {
+                            fileInfo.Delete();
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.LogError($"There was a problem cleaning up regular backups. The error was {ex}.");
+                        }
+                    }
+
+                    // Since this check only applies to daily, and we just did it, move to the next entry
+                    continue;
+                }
+
+                // Do a check on the non-daily directories
+                if (fileInfo.CreationTime < normalBackupDeleteDateThreshold)
+                {
+                    try
+                    {
+                        fileInfo.Delete();
                     }
                     catch (Exception ex)
                     {

@@ -28,5 +28,7 @@
         public int KeepBackupsForNumberOfDays { get; set; } = 2;
 
         public int KeepDailyBackupsForNumberOfDays { get; set; } = 7;
+
+        public bool CompressToArchiveFile { get; set; } = false;
     }
 }
