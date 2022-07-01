@@ -115,19 +115,7 @@ namespace MinecraftBdsManager.Managers
                 // Zip the backup directory
                 ZipFile.CreateFromDirectory(backupDirectoryPath, targetZipFilePath);
 
-                // Upload it to the appropriate location
-                switch (Settings.CurrentSettings.BackupSettings.CloudBackupType)
-                {
-                    case BackupSettings.CloudType.AmazonS3:
-                        return await CopyToAmazonS3(targetZipFilePath);
-
-                    case BackupSettings.CloudType.AzureBlob:
-                        return await CopyToAzureBlob(targetZipFilePath);
-
-                    case BackupSettings.CloudType.None:
-                    default:
-                        return false;
-                }
+                return await CopyArchiveToCloudStorage(targetZipFilePath);
             }
             catch(Exception ex)
             {
@@ -140,6 +128,28 @@ namespace MinecraftBdsManager.Managers
                 {
                     File.Delete(targetZipFilePath);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Copies a single zip archive file to cloud storage
+        /// </summary>
+        /// <param name="archiveFilePath">Path of the zip archive to upload.</param>
+        /// <returns>Handle to the async promise with a flag result indicating success.  True means the backup was successful.  False means it failed. </returns>
+        internal async static Task<bool> CopyArchiveToCloudStorage(string archiveFilePath)
+        {
+            // Upload it to the appropriate location
+            switch (Settings.CurrentSettings.BackupSettings.CloudBackupType)
+            {
+                case BackupSettings.CloudType.AmazonS3:
+                    return await CopyToAmazonS3(archiveFilePath);
+
+                case BackupSettings.CloudType.AzureBlob:
+                    return await CopyToAzureBlob(archiveFilePath);
+
+                case BackupSettings.CloudType.None:
+                default:
+                    return false;
             }
         }
 
@@ -305,7 +315,7 @@ namespace MinecraftBdsManager.Managers
                     }
                     else
                     {
-                        await CopyToCloudStorage(compressedArchiveFilePath);
+                        await CopyArchiveToCloudStorage(compressedArchiveFilePath);
                     }
                 }
 
