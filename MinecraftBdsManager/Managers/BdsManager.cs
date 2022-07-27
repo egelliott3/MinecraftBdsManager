@@ -84,9 +84,9 @@ namespace MinecraftBdsManager.Managers
         public static DateTime? UserLastLoggedOffAt { get; private set; }
 
         /// <summary>
-        /// Path to the world directory.  This is null if the server has not been started.
+        /// Path to the world directory.  This is an empty path if the server has never been started to avoid Path.combine errors on startup. (race condition)
         /// </summary>
-        public static string? WorldDirectoryPath { get; private set; }
+        public static string? WorldDirectoryPath { get; private set; } = "";
 
         /// <summary>
         /// Determines if users have active on the server in the last time interval specified

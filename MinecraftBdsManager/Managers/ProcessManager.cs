@@ -60,7 +60,7 @@ namespace MinecraftBdsManager.Managers
                 return StartFireAndForgetProcess(executablePath, arguments);
             }
 
-            Trace.TraceInformation($"Starting process {processName}.");
+            Trace.TraceInformation($"Starting process: {processName}, using {arguments}.");
 
             // Check to see if we are already tracking this process...
             if (TrackedProcesses.ContainsKey(processName) && processName != ProcessName.FireAndForget)
