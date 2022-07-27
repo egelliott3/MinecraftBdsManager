@@ -19,9 +19,11 @@ namespace MinecraftBdsManager
             {
                 return;
             }
-
-            await BdsManager.SendCommandAsync(txtCustomCommand.Text, userSentCommand: true);
-            txtCustomCommand.Text = String.Empty;
+            if (BdsManager.ServerIsRunning) 
+            {
+                await BdsManager.SendCommandAsync(txtCustomCommand.Text, userSentCommand: true);
+                txtCustomCommand.Text = String.Empty;
+            }
         }
 
         private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
@@ -141,6 +143,17 @@ namespace MinecraftBdsManager
             }
 
             ProcessManager.StartProcess(ProcessName.FireAndForget, "explorer.exe", LogManager.CurrentLogFilePath);
+        }
+
+        private void toolBtnSettings_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(Settings.SettingsLocation))
+            {
+                LogManager.LogWarning($"An invalid Settings location has been specified {Settings.SettingsLocation}");
+                return;
+            }
+
+            ProcessManager.StartProcess(ProcessName.FireAndForget, "explorer.exe", Settings.SettingsLocation);
         }
     }
 }

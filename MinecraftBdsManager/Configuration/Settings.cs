@@ -58,7 +58,11 @@ namespace MinecraftBdsManager.Configuration
                 return _instance;
             }
         }
-
+        ///<summary>
+        /// The settings file that was loaded with this instance
+        ///</summary>
+        public static String SettingsLocation { get; } = _settingsFilePath;
+        
         /// <summary>
         /// Settings that govern if and how logs will be written to the file system.
         /// </summary>
